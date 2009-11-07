@@ -1,0 +1,12 @@
+<stack name="rwi" version="0.1.0">
+  <description brief="drivers for the rwi family of robots">
+
+     Driver code for robots produced by Real World Industries.
+
+  </description>
+  <author>Maintained by Erik Karulf</author>
+  <license>BSD</license>  
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/rwi</url>
+
+</stack>
