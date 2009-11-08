@@ -8,5 +8,7 @@
   <license>BSD</license>  
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/rwi</url>
-
+  <depend stack="common_msgs"/>
+  <depend stack="geometry"/>
+  <depend stack="ros"/>
 </stack>
