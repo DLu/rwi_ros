@@ -110,14 +110,14 @@
 enum PARITY_TYPE   { N, E, O };
 
 typedef struct {
-  char                       ttyport[MAX_NAME_LENGTH];
-  int                        baud;
-  enum PARITY_TYPE           parity;
-  int                        fd;
-  int                        databits;
-  int                        stopbits;
-  int                        hwf;
-  int                        swf;
+    char                       ttyport[MAX_NAME_LENGTH];
+    int                        baud;
+    enum PARITY_TYPE           parity;
+    int                        fd;
+    int                        databits;
+    int                        stopbits;
+    int                        hwf;
+    int                        swf;
 } RFLEX_Device;
 
 #endif

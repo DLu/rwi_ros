@@ -24,8 +24,9 @@
 #define SONAR_MAX_RANGE 3000
 
 #define SONAR_NUM_BANKS 14
-const int SONARS_PER_BANK[] = {4, 4, 4, 4, 4, 4, 
-							  3, 3, 3, 3, 3, 3, 3, 3};
+const int SONARS_PER_BANK[] = {4, 4, 4, 4, 4, 4,
+                               3, 3, 3, 3, 3, 3, 3, 3
+                              };
 #define SONAR_MAX_PER_BANK 16
 #define SONAR_RING_COUNT 2
 const int SONARS_PER_RING[] = {24, 24};
