@@ -8,11 +8,12 @@
   <url>http://ros.org/wiki/rflex</url>
   <depend package="roscpp"/>
   <depend package="std_msgs"/>
+  <depend package="sensor_msgs"/>
   <depend package="geometry_msgs"/>
-  <depend package="player" />
   <depend package="nav_msgs" />
   <depend package="pr2_msgs" /> 
   <depend package="tf" />
+  <depend package="angles" />
 
 </package>
 

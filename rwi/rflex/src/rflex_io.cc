@@ -37,8 +37,8 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
-#include <rflex/rflex-info.h>
-#include <rflex/rflex-io.h>
+#include <rflex/rflex_info.h>
+#include <rflex/rflex_io.h>
 
 #ifndef CRTSCTS
 #ifdef IHFLOW

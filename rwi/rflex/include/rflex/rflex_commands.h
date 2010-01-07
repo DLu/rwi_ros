@@ -22,46 +22,78 @@
 #ifndef RFLEX_COMMANDS_H
 #define RFLEX_COMMANDS_H
 
-  int rflex_open_connection(char *dev_name, int *fd);
-  int rflex_close_connection(int *fd);
+class RFLEX {
+    private:
+        int fd;
 
-  void rflex_sonars_on(int fd);
-  void rflex_sonars_off(int fd);
+        int open_connection(char *);
 
-  void rflex_ir_on(int fd);
-  void rflex_ir_off(int fd);
+        void cmdSend(int, int, int, int, unsigned char*);
+        void parseMotReport(unsigned char*);
+        void parseDioReport( unsigned char* );
+        void parseIrReport( unsigned char *);
+        void parseSysReport(unsigned char*);
+        void parseSonarReport( unsigned char *);
+        void parseJoyReport( unsigned char * );
+        int  parseBuffer( unsigned char*, unsigned int);
+        int  clear_incoming_data();
 
-  void rflex_brake_on(int fd);
-  void rflex_brake_off(int fd);
+        int distance, bearing, t_vel, r_vel;
+        int *ranges, *oldranges;
 
-  void rflex_odometry_off( int fd );
-  void rflex_odometry_on( int fd, long period );
+        int num_bumpers;
+        char *bumpers;
 
-  void rflex_motion_set_defaults(int fd);
+        long voltage;
+        bool brake;
 
-  void rflex_initialize(int fd, int trans_acceleration,
-			       int rot_acceleration,
-			       int trans_pos,
-			       int rot_pos);
+        int lcd_x, lcd_y;
+        unsigned char * lcd_data;
 
-  void rflex_update_status(int fd, int *distance, 
-				  int *bearing, int *t_vel,
-				  int *r_vel);
+        int num_ir;
+        unsigned char * ir_ranges;
 
-  void rflex_update_system(int fd, int *battery,
-				   int *brake);
+        int home_bearing;
+        int home_bearing_found;
 
-  int rflex_update_sonar(int fd, int num_sonars,
-				 int *ranges);
-  void rflex_update_bumpers(int fd, int num_bumpers,
-				   char *values);
-  void rflex_update_ir(int fd, int num_irs,
-			     unsigned char *ranges);
+    public:
+        int close_connection();
 
-  void rflex_set_velocity(int fd, long t_vel, long r_vel, 
-				 long acceleration);
-  void rflex_stop_robot(int fd, int deceleration);
+        void sonars_on();
+        void sonars_off();
 
-//int clear_incoming_data(int fd);
+        void ir_on();
+        void ir_off();
 
+        void brake_on();
+        void brake_off();
+
+        void odometry_off(  );
+        void odometry_on( long period );
+
+        void digital_io_on( int period );
+        void digital_io_off(  );
+
+        void motion_set_defaults();
+
+        int initialize(char* devname);
+
+        void update_status(float *distance,
+                           float *bearing, float *t_vel,
+                           float *r_vel);
+
+        void update_system(int *battery,
+                           int *brake);
+
+        int update_sonar(float **rings);
+        void update_bumpers(int num_bumpers,
+                            char *values);
+        void update_ir(int num_irs,
+                       unsigned char *ranges);
+
+        void set_velocity(long t_vel, long r_vel,
+                          long acceleration);
+        void stop_robot(int deceleration);
+
+};
 #endif

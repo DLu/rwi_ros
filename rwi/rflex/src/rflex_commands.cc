@@ -23,46 +23,14 @@
 #include <sys/time.h>
 #include <netinet/in.h>
 
-#include <rflex/rflex-info.h>
+#include <rflex/rflex_info.h>
 #include <rflex/rflex_commands.h>
-#include <rflex/rflex-io.h>
+#include <rflex/rflex_io.h>
 #include <rflex/rflex_configs.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-//#include <pthread.h>
 #include <unistd.h>
-#include <rflex/rflex.h>
-
-
-//holds data until someone wants to read it
-typedef struct {
-  int distance;
-  int bearing;
-  int t_vel;
-  int r_vel;
-  int num_sonars;
-  int *ranges;
-  int *oldranges;
-  int num_bumpers;
-  char *bumpers;
-  int voltage;
-  bool brake;
-  int lcd_x;
-  int lcd_y;
-  unsigned char * lcd_data;
-  int num_ir;
-  unsigned char * ir_ranges;
-  int home_bearing;
-  int home_bearing_found;
-
-} rflex_status_t;
-
-
-static int clear_incoming_data(int fd);
-
-
-static rflex_status_t status;
 
 //finds the sign of a value
 static int sgn( long val )
@@ -144,7 +112,7 @@ static void convertUInt32( unsigned long l, unsigned char *bytes )
 }
 
 //sends a command to the rflex
-static void cmdSend( int fd, int port, int id, int opcode, int len, unsigned char *data )
+void RFLEX::cmdSend( int port, int id, int opcode, int len, unsigned char *data )
 {
   int i;
   static unsigned char cmd[MAX_COMMAND_LENGTH];
@@ -181,7 +149,7 @@ static void cmdSend( int fd, int port, int id, int opcode, int len, unsigned cha
 	timeval start = {0,0};
 	do
 	{
-		count = clear_incoming_data(fd);
+		count = clear_incoming_data();
   		gettimeofday(&now,NULL);
 		if (count > 0 )
 			start = now;
@@ -195,41 +163,41 @@ static void cmdSend( int fd, int port, int id, int opcode, int len, unsigned cha
   //pthread_testcancel();
 }
 
-void rflex_sonars_on( int fd )
+void RFLEX::sonars_on()
 {
   unsigned char data[MAX_COMMAND_LENGTH];
-  convertUInt32( (unsigned long) rflex_configs.sonar_echo_delay/*30000*/, &(data[0]) );
-  convertUInt32( (unsigned long) rflex_configs.sonar_ping_delay/*0*/, &(data[4]) );
-  convertUInt32( (unsigned long) rflex_configs.sonar_set_delay/*0*/, &(data[8]) );
+  convertUInt32( (unsigned long) SONAR_ECHO_DELAY, &(data[0]) );
+  convertUInt32( (unsigned long) SONAR_PING_DELAY, &(data[4]) );
+  convertUInt32( (unsigned long) SONAR_SET_DELAY , &(data[8]) );
   convertUInt8(  (unsigned int) 2, &(data[12]) );
-  cmdSend( fd, SONAR_PORT, 4, SONAR_RUN, 13, data );
+  cmdSend(SONAR_PORT, 4, SONAR_RUN, 13, data );
 }
 
-void rflex_sonars_off( int fd )
+void RFLEX::sonars_off(  )
 {
   unsigned char data[MAX_COMMAND_LENGTH];
   convertUInt32( (long) 0, &(data[0]) );
   convertUInt32( (long) 0, &(data[4]) );
   convertUInt32( (long) 0, &(data[8]) );
   convertUInt8(  (int) 0, &(data[12]) );
-  cmdSend( fd, SONAR_PORT, 4, SONAR_RUN, 13, data );
+  cmdSend(SONAR_PORT, 4, SONAR_RUN, 13, data );
 }
 
-void rflex_digital_io_on( int fd, int period )
+void RFLEX::digital_io_on( int period )
 {
   unsigned char data[MAX_COMMAND_LENGTH];
   convertUInt32( (long) period, &(data[0]) );
-  cmdSend( fd, DIO_PORT, 0, DIO_REPORTS_REQ, 4, data );
+  cmdSend(DIO_PORT, 0, DIO_REPORTS_REQ, 4, data );
 }
 
-void rflex_digital_io_off( int fd )
+void RFLEX::digital_io_off(  )
 {
   unsigned char data[MAX_COMMAND_LENGTH];
   convertUInt32( (long) 0, &(data[0]) );
-  cmdSend( fd, DIO_PORT, 4, DIO_REPORTS_REQ, 4, data );
+  cmdSend(DIO_PORT, 4, DIO_REPORTS_REQ, 4, data );
 }
 
-void rflex_ir_on( int fd )
+void RFLEX::ir_on(  )
 {
   unsigned char data[MAX_COMMAND_LENGTH];
   convertUInt32( (long) 0, &(data[0]) );
@@ -238,10 +206,10 @@ void rflex_ir_on( int fd )
   convertUInt32( (long) 20, &(data[12]) );
   convertUInt32( (long) 150, &(data[16]) );
   convertUInt8( (unsigned char) 2, &(data[20]) );
-  cmdSend( fd, IR_PORT, 0, IR_RUN, 21, data );
+  cmdSend(IR_PORT, 0, IR_RUN, 21, data );
 }
 
-void rflex_ir_off( int fd )
+void RFLEX::ir_off(  )
 {
   unsigned char data[MAX_COMMAND_LENGTH];
   convertUInt32( (long) 0, &(data[0]) );
@@ -250,44 +218,47 @@ void rflex_ir_off( int fd )
   convertUInt32( (long) 0, &(data[12]) );
   convertUInt32( (long) 0, &(data[16]) );
   convertUInt8( (unsigned char) 0, &(data[20]) );
-  cmdSend( fd, IR_PORT, 0, IR_RUN, 21, data );
+  cmdSend(IR_PORT, 0, IR_RUN, 21, data );
 }
-void rflex_brake_on( int fd )
+void RFLEX::brake_on(  )
 {
-  cmdSend( fd, MOT_PORT, 0, MOT_BRAKE_SET, 0, NULL );
+  cmdSend(MOT_PORT, 0, MOT_BRAKE_SET, 0, NULL );
 }
 
-void rflex_brake_off( int fd )
+void RFLEX::brake_off(  )
 {
-  cmdSend( fd, MOT_PORT, 0, MOT_BRAKE_RELEASE, 0, NULL );
+  cmdSend(MOT_PORT, 0, MOT_BRAKE_RELEASE, 0, NULL );
 }
 
-void rflex_motion_set_defaults( int fd )
+void RFLEX::motion_set_defaults(  )
 {
-  cmdSend( fd, MOT_PORT, 0, MOT_SET_DEFAULTS, 0, NULL );
+  cmdSend(MOT_PORT, 0, MOT_SET_DEFAULTS, 0, NULL );
 }
 
-void rflex_odometry_on( int fd, long period )
+void RFLEX::odometry_on( long period )
 {
   unsigned char data[MAX_COMMAND_LENGTH];
   convertUInt32( period, &(data[0]) );         /* period in ms */
   convertUInt32( (long) 3, &(data[4]) );       /* mask */
-  cmdSend( fd, MOT_PORT, 0, MOT_SYSTEM_REPORT_REQ, 8, data );
+  cmdSend(MOT_PORT, 0, MOT_SYSTEM_REPORT_REQ, 8, data );
 }
 
-void rflex_odometry_off( int fd )
+void RFLEX::odometry_off(  )
 {
   unsigned char data[MAX_COMMAND_LENGTH];
   convertUInt32( (long) 0, &(data[0]) );       /* period in ms */
   convertUInt32( (long) 0, &(data[4]) );       /* mask */
-  cmdSend( fd, MOT_PORT, 0, MOT_SYSTEM_REPORT_REQ, 8, data );
+  cmdSend(MOT_PORT, 0, MOT_SYSTEM_REPORT_REQ, 8, data );
 }
 
 
-void rflex_set_velocity( int fd, long tvel, long rvel,
+void RFLEX::set_velocity( long tvel, long rvel,
 			   long acceleration )
 {
   unsigned char data[MAX_COMMAND_LENGTH];
+	tvel *= ODO_DISTANCE_CONVERSION;
+	rvel *= ODO_ANGLE_CONVERSION;
+	acceleration *= ODO_DISTANCE_CONVERSION;
 
   long utvel;long urvel;
 
@@ -319,7 +290,7 @@ void rflex_set_velocity( int fd, long tvel, long rvel,
   convertUInt32( (long) STD_TRANS_TORQUE, &(data[9]) );       /* trans torque */
   convertUInt8( (long) sgn(tvel),         &(data[13]) );      /* trans direction */
 
-  cmdSend( fd, MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
+  cmdSend(MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
 
   convertUInt8( (long) 1,                 &(data[0]) );       /* rotational motion */
   convertUInt32( (long) labs(urvel),        &(data[1]) );       /* abs rot velocity  */
@@ -328,15 +299,15 @@ void rflex_set_velocity( int fd, long tvel, long rvel,
   convertUInt32( (long) STD_ROT_TORQUE,   &(data[9]) );       /* rot torque */
   convertUInt8( (long) sgn(rvel),         &(data[13]) );      /* rot direction */
 
-  cmdSend( fd, MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
+  cmdSend(MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
 }
 
-void rflex_stop_robot( int fd, int deceleration)
+void RFLEX::stop_robot( int deceleration)
 {
-  rflex_set_velocity( fd, 0, 0, deceleration);
+  set_velocity( 0, 0, deceleration);
 }
 
-int rflex_open_connection(char *device_name, int *fd)
+int RFLEX::open_connection(char *device_name)
 {
   RFLEX_Device   rdev;
 
@@ -354,27 +325,26 @@ int rflex_open_connection(char *device_name, int *fd)
     return -1;
   }
 
-  *fd = rdev.fd;
-  rflex_odometry_on(*fd, 100000);
-  rflex_digital_io_on(*fd, 100000);
-  rflex_motion_set_defaults(*fd);
+  fd = rdev.fd;
+  odometry_on(100000);
+  digital_io_on( 100000);
+  motion_set_defaults();
   return 0;
 }
 
-int rflex_close_connection(int *fd)
+int RFLEX::close_connection()
 {
-  assert(fd);
-  if (*fd < 0)
+  if (fd < 0)
   	return -1;
-  rflex_motion_set_defaults(*fd);
-  rflex_odometry_off(*fd);
-  rflex_digital_io_off(*fd);
-  rflex_sonars_off(*fd);
-  rflex_ir_off(*fd);
+  motion_set_defaults();
+  odometry_off();
+  digital_io_off();
+  sonars_off();
+  ir_off();
 
   printf("Closing rflex serial port\n");
-  close(*fd);
-  *fd=-1;
+  close(fd);
+  fd=-1;
 
   return 0;
 }
@@ -382,7 +352,7 @@ int rflex_close_connection(int *fd)
 
 //processes a motor packet from the rflex - and saves the data in the
 //struct for later use
-static void parseMotReport( unsigned char *buffer )
+void RFLEX::parseMotReport( unsigned char *buffer )
 {
   int rv, timeStamp, acc, trq;
   unsigned char axis, opcode;
@@ -394,11 +364,11 @@ static void parseMotReport( unsigned char *buffer )
     timeStamp = convertBytes2UInt32(&(buffer[10]));
     axis      = buffer[14];
     if (axis == 0) {
-      status.distance = convertBytes2UInt32(&(buffer[15]));
-      status.t_vel = convertBytes2UInt32(&(buffer[19]));
+      distance = convertBytes2UInt32(&(buffer[15]));
+      t_vel = convertBytes2UInt32(&(buffer[19]));
     } else if (axis == 1) {
-      status.bearing = convertBytes2UInt32(&(buffer[15]));
-      status.r_vel = convertBytes2UInt32(&(buffer[19]));
+      bearing = convertBytes2UInt32(&(buffer[15]));
+      r_vel = convertBytes2UInt32(&(buffer[19]));
     }
     acc       = convertBytes2UInt32(&(buffer[23]));
     trq       = convertBytes2UInt32(&(buffer[27]));
@@ -410,7 +380,7 @@ static void parseMotReport( unsigned char *buffer )
 
 //processes a dio packet from the rflex - and saves the data in the
 //struct for later use, dio report includes bump sensors...
-static void parseDioReport( unsigned char *buffer )
+void RFLEX::parseDioReport( unsigned char *buffer )
 {
 	unsigned long timeStamp;
 	unsigned char opcode, length, address;
@@ -433,46 +403,45 @@ static void parseDioReport( unsigned char *buffer )
    			data = convertBytes2UInt16(&(buffer[11]));
 
 			// Check for the heading home event;
-			if(rflex_configs.heading_home_address == address)
+			if(HEADING_HOME_ADDRESS == address)
 			{
-				if(status.home_bearing_found)
+				if(home_bearing_found)
 					break;
 				static bool found_first = false;
 				static int first_home_bearing = 0;
 				if (found_first)
 				{
-					if ((first_home_bearing - status.bearing) > 0.785* rflex_configs.odo_angle_conversion)
+					if ((first_home_bearing - bearing) > 0.785* ODO_ANGLE_CONVERSION)
 					{
-						first_home_bearing=static_cast<int> (first_home_bearing-rflex_configs.odo_angle_conversion*2*M_PI);
+						first_home_bearing=static_cast<int> (first_home_bearing-ODO_ANGLE_CONVERSION*2*M_PI);
 					}
-					else if ((first_home_bearing - status.bearing) < 0.785* rflex_configs.odo_angle_conversion)
+					else if ((first_home_bearing - bearing) < 0.785* ODO_ANGLE_CONVERSION)
 					{
-						first_home_bearing=static_cast<int> (first_home_bearing+rflex_configs.odo_angle_conversion*2*M_PI);
+						first_home_bearing=static_cast<int> (first_home_bearing+ODO_ANGLE_CONVERSION*2*M_PI);
 					}
-					if (abs(first_home_bearing - status.bearing) > 0.01 * rflex_configs.odo_angle_conversion)
+					if (abs(first_home_bearing - bearing) > 0.01 * ODO_ANGLE_CONVERSION)
 					{
-						rflex_configs.home_on_start = false;
-						status.home_bearing=status.bearing > first_home_bearing? status.bearing:first_home_bearing;
-						status.home_bearing_found = true;
-						printf("Home bearing found %d\n",status.home_bearing);
+						home_bearing=bearing > first_home_bearing? bearing:first_home_bearing;
+						home_bearing_found = true;
+						printf("Home bearing found %d\n",home_bearing);
 					}
 				}
 				else
 				{
-						first_home_bearing=status.bearing;
+						first_home_bearing=bearing;
 						found_first = true;
 				}
 				break;
 			}
 
 
-			if(BUMPER_ADDR == rflex_configs.bumper_style)
+			if(BUMPER_STYLE == BUMPER_ADDRESS_STYLE)
 			{
 			   // on the b21r the bump packets are address 0x40 -> 0x4D, there are some other dio packets
 			   // but dont know what they do so we throw them away
 
 			   // check if the dio packet came from a bumper packet
-			   if ((address < rflex_configs.bumper_address) || (address >= (rflex_configs.bumper_address+status.num_bumpers)))
+			   if ((address < BUMPER_ADDRESS) || (address >= (BUMPER_ADDRESS+num_bumpers)))
 			   {
 			      // not bumper
 			      fprintf(stderr,"(dio) address = 0x%02x ",address);
@@ -483,7 +452,7 @@ static void parseDioReport( unsigned char *buffer )
 			      // is bumper
 			      //fprintf(stderr,"(bump) address = 0x%02x ",address);
 			      // assign low data byte to the bumpers (16 bit DIO data, low 4 bits give which corners or the panel are 'bumped')
-			      status.bumpers[address - rflex_configs.bumper_address] = data & 0x0F;
+			      bumpers[address - BUMPER_ADDRESS] = data & 0x0F;
 			   }
 			}
 			else
@@ -492,7 +461,7 @@ static void parseDioReport( unsigned char *buffer )
 			   // match one bumper
 
 			   // Check if the dio paquet came from a bumper packet
-			   if ((address < rflex_configs.bumper_address) || (address >= (rflex_configs.bumper_address+(status.num_bumpers/8))))
+			   if ((address < BUMPER_ADDRESS) || (address >= (BUMPER_ADDRESS+(num_bumpers/8))))
 			   {
 			      // not bumper
 			      fprintf(stderr,"(dio) address = 0x%02x ",address);
@@ -507,7 +476,7 @@ static void parseDioReport( unsigned char *buffer )
 			      for (int i=0; i<8; i++)
 			      {
 				 // assign each bit of the data to a bumper.
-				 status.bumpers[((address - rflex_configs.bumper_address) * 8 )+ i] = data & (0x01 << i);
+				 bumpers[((address - BUMPER_ADDRESS) * 8 )+ i] = data & (0x01 << i);
 			      }
 			   }
 			}
@@ -518,7 +487,7 @@ static void parseDioReport( unsigned char *buffer )
 }
 
 // Processes the IR sensor report
- static void parseIrReport( unsigned char *buffer )
+ void RFLEX::parseIrReport( unsigned char *buffer )
  {
   // unsigned long timeStamp;
    unsigned char opcode, length;//, address;
@@ -534,11 +503,11 @@ static void parseDioReport( unsigned char *buffer )
 
 	// allocate ir storage if we havent already
 	// must be a better place to do this but it works
-   if (status.num_ir== 0 && rflex_configs.ir_poses.poses_count > 0)
+   if (num_ir== 0 && IR_POSES_COUNT > 0)
    {
-       status.ir_ranges = new unsigned char[rflex_configs.ir_poses.poses_count];
-       if (status.ir_ranges != NULL)
-           status.num_ir = rflex_configs.ir_poses.poses_count;
+       ir_ranges = new unsigned char[IR_POSES_COUNT];
+       if (ir_ranges != NULL)
+           num_ir = IR_POSES_COUNT;
 	else
 		fprintf(stderr,"Error allocating ir range storage in rflex status\n");
    }
@@ -555,25 +524,25 @@ static void parseDioReport( unsigned char *buffer )
 
 		// get number of IR readings to make
 	   	unsigned char pckt_ir_count = buffer[6];
-	   	if (pckt_ir_count < rflex_configs.ir_base_bank)
+	   	if (pckt_ir_count < IR_BASE_BANK)
    			pckt_ir_count = 0;
 		else
-			pckt_ir_count -= rflex_configs.ir_base_bank;
+			pckt_ir_count -= IR_BASE_BANK;
 
-		if (pckt_ir_count > rflex_configs.ir_bank_count)
-   			pckt_ir_count = rflex_configs.ir_bank_count;
+		if (pckt_ir_count > IR_BANK_COUNT)
+   			pckt_ir_count = IR_BANK_COUNT;
 
 
 		// now actually read the ir data
 		int ir_data_index = 0;
-		for (int i=0; i < rflex_configs.ir_bank_count && ir_data_index < status.num_ir; ++i)
+		for (int i=0; i < IR_BANK_COUNT && ir_data_index < num_ir; ++i)
 		{
-			for (int j = 0; j < rflex_configs.ir_count[i] && ir_data_index < status.num_ir; ++j,++ir_data_index)
+			for (int j = 0; j < IR_PER_BANK && ir_data_index < num_ir; ++j,++ir_data_index)
 			{
 				// work out the actual offset in teh packet
 				//(current bank + bank offfset) * bank data block size + current ir sensor + constant offset
-				int data_index = (rflex_configs.ir_base_bank + i) * 13 + j + 11;
-				status.ir_ranges[ir_data_index] = buffer[data_index];
+				int data_index = (IR_BASE_BANK + i) * 13 + j + 11;
+				ir_ranges[ir_data_index] = buffer[data_index];
 			}
 		}
 
@@ -584,18 +553,18 @@ static void parseDioReport( unsigned char *buffer )
    }
 
    // debug print
-/*   for (int i = 0; i < status.num_ir ; ++i)
-   	printf("%02x ", status.ir_ranges[i]);
+/*   for (int i = 0; i < num_ir ; ++i)
+   	printf("%02x ", ir_ranges[i]);
 	printf("\n");*/
 }
 
 
 //processes a sys packet from the rflex - and saves the data in the
 //struct for later use, sys is primarily used for bat voltage & brake status
-static void parseSysReport( unsigned char *buffer )
+void RFLEX::parseSysReport( unsigned char *buffer )
 {
-   unsigned long timeStamp, voltage;
-   unsigned char opcode, length, brake;
+   unsigned long timeStamp;
+   unsigned char opcode, length;
 
 
    opcode = buffer[4];
@@ -617,13 +586,13 @@ static void parseSysReport( unsigned char *buffer )
 			timeStamp=convertBytes2UInt32(&(buffer[6]));
 			row = buffer[10];
 			lcd_length = buffer[11];
-			if (row > status.lcd_y || lcd_length > status.lcd_x)
+			if (row > lcd_y || lcd_length > lcd_x)
 			{
 				fprintf(stderr,"LCD Data Overflow\n");
 				break;
 			}
 
-			memcpy(&status.lcd_data[row*status.lcd_x],&buffer[12],lcd_length);
+			memcpy(&lcd_data[row*lcd_x],&buffer[12],lcd_length);
 
 			// if we got whole lcd dump to file
 /*			if (row == 239)
@@ -631,11 +600,11 @@ static void parseSysReport( unsigned char *buffer )
 				FILE * fout;
 				if ((fout = fopen("test.raw","w"))!=0)
 				{
-					for (int y=0; y<status.lcd_y; ++y)
+					for (int y=0; y<lcd_y; ++y)
 					{
-						for (int x=0; x<status.lcd_x;++x)
+						for (int x=0; x<lcd_x;++x)
 						{
-							unsigned char Temp = status.lcd_data[y*status.lcd_x + x];
+							unsigned char Temp = lcd_data[y*lcd_x + x];
 							for (int i = 0; i < 8; ++i)
 							{
 								if ((Temp >> i) & 0x01)
@@ -665,8 +634,6 @@ static void parseSysReport( unsigned char *buffer )
 			voltage=convertBytes2UInt32(&(buffer[10]));
 			brake=buffer[14];
 
-			status.voltage = voltage;
-			status.brake = brake;
 			break;
 
 		default:
@@ -677,7 +644,7 @@ static void parseSysReport( unsigned char *buffer )
 //processes a sonar packet fromt the rflex, and saves the data in the
 //struct for later use
 //HACK - also buffers data and filters for smallest in last AGE readings
-static void parseSonarReport( unsigned char *buffer )
+void RFLEX::parseSonarReport( unsigned char *buffer )
 {
 
   unsigned int sid;
@@ -690,27 +657,26 @@ static void parseSonarReport( unsigned char *buffer )
   opcode = buffer[4];
   dlen   = buffer[5];
 
-  status.num_sonars=rflex_configs.max_num_sonars;
   switch(opcode) {
   case SONAR_REPORT:
-	if (status.ranges == NULL || status.oldranges == NULL)
+	if (ranges == NULL || oldranges == NULL)
 		return;
     retval    = convertBytes2UInt32(&(buffer[6]));
     timeStamp = convertBytes2UInt32(&(buffer[10]));
     count = 0;
-    while ((8+count*3<dlen) && (count<256) && (count < rflex_configs.num_sonars)) {
+    while ((8+count*3<dlen) && (count<256) && (count < SONAR_COUNT)) {
       sid = buffer[14+count*3];
       //shift buffer
-      for(x=0;x<rflex_configs.sonar_age-1;x++)
-	status.oldranges[x+1+sid*rflex_configs.sonar_age]=status.oldranges[x+sid*rflex_configs.sonar_age];
+      for(x=0;x<SONAR_AGE-1;x++)
+	      oldranges[x+1+sid*SONAR_AGE]=oldranges[x+sid*SONAR_AGE];
       //add value to buffer
-      smallest=status.oldranges[0+sid*rflex_configs.sonar_age]=convertBytes2UInt16( &(buffer[14+count*3+1]));
+      smallest=oldranges[0+sid*SONAR_AGE]=convertBytes2UInt16( &(buffer[14+count*3+1]));
       //find the smallest
-      for(x=1;x<rflex_configs.sonar_age;x++)
-	if(smallest>status.oldranges[x+sid*rflex_configs.sonar_age])
-	  smallest=status.oldranges[x+sid*rflex_configs.sonar_age];
+      for(x=1;x<SONAR_AGE;x++)
+	     if(smallest>oldranges[x+sid*SONAR_AGE])
+	        smallest=oldranges[x+sid*SONAR_AGE];
       //set the smallest in last sonar_age as our value
-      status.ranges[sid] = smallest;
+      ranges[sid] = smallest;
       count++;
     }
     break;
@@ -721,7 +687,7 @@ static void parseSonarReport( unsigned char *buffer )
 
 //processes a joystick packet fromt the rflex, and sets as command if
 // joystick command enabled
-static void parseJoyReport( int fd, unsigned char *buffer )
+void RFLEX::parseJoyReport( unsigned char *buffer )
 {
 	static bool JoystickWasOn = false;
 
@@ -745,14 +711,16 @@ static void parseJoyReport( int fd, unsigned char *buffer )
 	if ((buttons & 1) == 1)
 	{
 		JoystickWasOn = true;
-		rflex_set_velocity(fd,(long) M2ARB_ODO_CONV(y * rflex_configs.joy_pos_ratio),(long) RAD2ARB_ODO_CONV(x * rflex_configs.joy_ang_ratio),(long) M2ARB_ODO_CONV(rflex_configs.mPsec2_trans_acceleration));
-		RFLEX::joy_control = 5;
+		set_velocity((long) (y * JOY_POS_RATIO * ODO_DISTANCE_CONVERSION),
+					 (long) (x * JOY_ANG_RATIO * ODO_ANGLE_CONVERSION),
+					 (long) (DEFAULT_TRANS_ACCELERATION * ODO_DISTANCE_CONVERSION));
+		//RFLEX::joy_control = 5;
 	}
 	else if (JoystickWasOn)
 	{
 		JoystickWasOn = false;
-		rflex_set_velocity(fd,0,0,(long) M2ARB_ODO_CONV(rflex_configs.mPsec2_trans_acceleration));
-		RFLEX::joy_control = 5;
+		set_velocity(0,0,(long) (DEFAULT_TRANS_ACCELERATION * ODO_DISTANCE_CONVERSION));
+		//RFLEX::joy_control = 5;
 	}
 
     break;
@@ -763,7 +731,7 @@ static void parseJoyReport( int fd, unsigned char *buffer )
 
 
 //parses a packet from the rflex, and decides what to do with it
-static int parseBuffer( int fd,unsigned char *buffer, unsigned int len )
+int RFLEX::parseBuffer( unsigned char *buffer, unsigned int len )
 {
   unsigned int port, dlen, crc;
 
@@ -785,7 +753,7 @@ static int parseBuffer( int fd,unsigned char *buffer, unsigned int len )
       parseMotReport( buffer );
       break;
     case JSTK_PORT:
-		parseJoyReport( fd, buffer );
+		parseJoyReport( buffer );
       break;
     case SONAR_PORT:
       parseSonarReport( buffer );
@@ -806,7 +774,7 @@ static int parseBuffer( int fd,unsigned char *buffer, unsigned int len )
 }
 
 // returns number of commands parsed
-static int clear_incoming_data(int fd)
+int RFLEX::clear_incoming_data()
 {
   unsigned char buffer[4096];
   int len;
@@ -822,24 +790,25 @@ static int clear_incoming_data(int fd)
     //pthread_testcancel();
     waitForAnswer(fd, buffer, &len);
     //pthread_testcancel();
-    parseBuffer(fd, buffer, len);
+    parseBuffer(buffer, len);
   }
   return count;
 }
 
 //returns the odometry data saved in the struct
-void rflex_update_status(int fd, int *distance,  int *bearing,
-			   int *t_vel, int *r_vel)
+void RFLEX::update_status(float *distance_o,  float *bearing_o,
+			   float *t_vel_o, float *r_vel_o)
 {
-  clear_incoming_data(fd);
+  clear_incoming_data();
 
-  *distance = status.distance;
-  if(status.home_bearing_found)
-	  *bearing = status.bearing-status.home_bearing;
+  *distance_o = distance / (float) ODO_DISTANCE_CONVERSION;
+  if(home_bearing_found)
+	  *bearing_o = bearing-home_bearing;
   else
-	  *bearing = status.bearing;
-  *t_vel = status.t_vel;
-  *r_vel = status.r_vel;
+	  *bearing_o = bearing;
+  *bearing_o /= (float) ODO_ANGLE_CONVERSION;
+  *t_vel_o = t_vel / (float) ODO_DISTANCE_CONVERSION;
+  *r_vel_o = r_vel / (float) ODO_ANGLE_CONVERSION;
 }
 
 /* gets actual data and returns it in ranges
@@ -858,104 +827,108 @@ void rflex_update_status(int fd, int *distance,  int *bearing,
  * -1 is returned if we get back fewer sonar than requested
  * (meaning your parameters are probobly incorrect) otherwise we return 0
  */
-int rflex_update_sonar(int fd,int num_sonars, int * ranges){
-  int x;
-  int y;
-  int i;
+int RFLEX::update_sonar(float** rings){
+  int x,y=0;
+  int ringi=0, i=0;
 
-  clear_incoming_data(fd);
+  clear_incoming_data();
 
   //copy all data
-  i=0;
-  y=0;
-  for(x=0;x<rflex_configs.num_sonar_banks;x++)
-    for(y=0;y<rflex_configs.num_sonars_in_bank[x];y++)
+  for(x=0;x<SONAR_NUM_BANKS;x++)
+    for(y=0;y<SONARS_PER_BANK[x];y++)
 	{
-      ranges[i]=status.ranges[x*rflex_configs.num_sonars_possible_per_bank+y];
-	  if (ranges[i] > rflex_configs.sonar_max_range)
-	  	ranges[i] = rflex_configs.sonar_max_range;
+      int range = ranges[x*SONAR_MAX_PER_BANK+y];
+	  if (range > SONAR_MAX_RANGE)
+	  	range = SONAR_MAX_RANGE;
+	  float fRange = range / (float) RANGE_CONVERSION;
+	  rings[ringi][i] = fRange;
 	  i++;
+	  if(i>=SONARS_PER_RING[ringi]){
+		i = 0;
+		ringi++;
+	  }
 	 }
-  if (i<num_sonars){
-    fprintf(stderr,"Requested %d sonar only %d supported\n",num_sonars,y);
-    num_sonars = y;
+  if (i<SONAR_COUNT){
+    fprintf(stderr,"Requested %d sonar only %d supported\n",SONAR_COUNT,y);
     return -1;
   }
  return 0;
 }
 
 // copies data from internal bumper list to the proper rflex bumper list
-void rflex_update_bumpers(int fd, int num_bumpers, char *values)
+void RFLEX::update_bumpers( int num_bumpers, char *values)
 {
-	clear_incoming_data(fd);
+	clear_incoming_data();
 	// allocate bumper storage if we havent already
 	// must be a better place to do this but it works
 	// *** watch out this is duplicated ***
-/*	if (status.num_bumpers != rflex_configs.bumper_count)
+/*	if (num_bumpers != BUMPER_COUNT)
 	{
-   		delete status.bumpers;
-		status.bumpers = new char[rflex_configs.bumper_count];
-		if (status.bumpers != NULL)
-			status.num_bumpers = rflex_configs.bumper_count;
+   		delete bumpers;
+		bumpers = new char[BUMPER_COUNT];
+		if (bumpers != NULL)
+			num_bumpers = BUMPER_COUNT;
 	}*/
 
-	if (num_bumpers > status.num_bumpers)
+	if (num_bumpers > num_bumpers)
 	{
     	fprintf(stderr,"Requested more bumpers than available.\n");
-    	num_bumpers = status.num_bumpers;
+    	num_bumpers = num_bumpers;
   	}
 
-	memcpy(values, status.bumpers, num_bumpers*sizeof(char));
+	memcpy(values, bumpers, num_bumpers*sizeof(char));
 }
 
 
 // copies data from internal bumper list to the proper rflex bumper list
-void rflex_update_ir(int fd, int num_irs,
+void RFLEX::update_ir( int num_irs,
 			    unsigned char *values)
 {
-  clear_incoming_data(fd);
+  clear_incoming_data();
 
-  if (num_irs > status.num_ir) {
-    //fprintf(stderr,"Requested more ir readings than available. %d of %d\n", num_irs,status.num_ir );
-    num_irs = status.num_ir;
+  if (num_irs > num_ir) {
+    //fprintf(stderr,"Requested more ir readings than available. %d of %d\n", num_irs,num_ir );
+    num_irs = num_ir;
   }
 
-  memcpy(values, status.ir_ranges, num_irs*sizeof(char));
+  memcpy(values, ir_ranges, num_irs*sizeof(char));
 }
 
 
 //returns the last battery, timestamp and brake information
-void rflex_update_system( int fd , int *battery,
-			     int *brake)
+void RFLEX::update_system(   int *battery,
+			     int *brake_o)
 {
-  //cmdSend( fd, SYS_PORT, 0, SYS_LCD_DUMP, 0, NULL );
-  cmdSend( fd, SYS_PORT, 0, SYS_STATUS, 0, NULL );
-  if (rflex_configs.use_joystick)
+  //cmdSend(SYS_PORT, 0, SYS_LCD_DUMP, 0, NULL );
+  cmdSend(SYS_PORT, 0, SYS_STATUS, 0, NULL );
+  if (USE_JOYSTICK)
   {
-  	cmdSend( fd, JSTK_PORT, 0, JSTK_GET_STATE, 0, NULL);
+  	cmdSend(JSTK_PORT, 0, JSTK_GET_STATE, 0, NULL);
   }
 
 
-  clear_incoming_data(fd);
+  clear_incoming_data();
 
-  *battery = status.voltage;
+  *battery = voltage;
   //timestamp = timestamp;
-  *brake = status.brake;
+  *brake_o = brake;
 }
 
 
 
-/* TODO - trans_pos rot_pos unused... AGAIN, fix this
+/* 
  * same effects are emulated at a higher level - is it possible to
  * do it here?
  */
-void rflex_initialize(int fd, int trans_acceleration,
-		      int rot_acceleration,
-		      int trans_pos,
-		      int rot_pos)
-{
+int RFLEX::initialize(char* devname){
+	int ret0 = open_connection(devname);
+	if(ret0<0) return ret0;
+
   unsigned char data[MAX_COMMAND_LENGTH];
   int x;
+
+	int trans_acceleration = DEFAULT_TRANS_ACCELERATION / ODO_DISTANCE_CONVERSION;
+	int rot_acceleration = DEFAULT_ROT_ACCELERATION / ODO_ANGLE_CONVERSION;
 
   data[0] = 0;
   convertUInt32( (long) 0, &(data[1]) );          /* velocity */
@@ -964,7 +937,7 @@ void rflex_initialize(int fd, int trans_acceleration,
   convertUInt32( (long) 0, &(data[9]) );      /* torque */
   data[13] = 0;
 
-  cmdSend( fd, MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
+  cmdSend(MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
 
   data[0] = 1;
   convertUInt32( (long) 0, &(data[1]) );          /* velocity */
@@ -973,37 +946,37 @@ void rflex_initialize(int fd, int trans_acceleration,
   convertUInt32( (long) 0, &(data[9]) );      /* torque */
   data[13] = 0;
 
-  cmdSend( fd, MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
+  cmdSend(MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
 
   //mark all non-existant (or no-data) sonar as such
   //note - this varies from MAX_INT set when sonar fail to get a valid echo.
-  status.ranges=(int*) malloc(rflex_configs.max_num_sonars*sizeof(int));
-  status.oldranges=(int*) malloc(rflex_configs.max_num_sonars*rflex_configs.sonar_age*sizeof(int));
-  for(x=0;x<rflex_configs.max_num_sonars;x++)
-    status.ranges[x]=-1;
+  ranges=(int*) malloc(SONAR_MAX_COUNT*sizeof(int));
+  oldranges=(int*) malloc(SONAR_MAX_COUNT*SONAR_AGE*sizeof(int));
+  for(x=0;x<SONAR_MAX_COUNT;x++)
+    ranges[x]=-1;
 
 	// initialise the LCD dump array
-	status.lcd_data=new unsigned char[320*240/8];
-	if (status.lcd_data != NULL)
+	lcd_data=new unsigned char[320*240/8];
+	if (lcd_data != NULL)
 	{
-		status.lcd_x=320/8;
-		status.lcd_y=240;
+		lcd_x=320/8;
+		lcd_y=240;
 	}
 
 	// allocate bumper storage if we havent already
 	// must be a better place to do this but it works
 	// *** watch out this is duplicated ***
-	if (status.num_bumpers != rflex_configs.bumper_count)
+	if (num_bumpers != BUMPER_COUNT)
 	{
-   		delete status.bumpers;
-		status.bumpers = new char[rflex_configs.bumper_count];
-		if (status.bumpers != NULL)
-			status.num_bumpers = rflex_configs.bumper_count;
-		for (int i = 0; i < status.num_bumpers; ++i)
-			status.bumpers[i] = 0;
+   		delete bumpers;
+		bumpers = new char[BUMPER_COUNT];
+		if (bumpers != NULL)
+			num_bumpers = BUMPER_COUNT;
+		for (int i = 0; i < num_bumpers; ++i)
+			bumpers[i] = 0;
 	}
-	status.home_bearing_found=false;
-
+	home_bearing_found=false;
+	return 0;
 }
 
 

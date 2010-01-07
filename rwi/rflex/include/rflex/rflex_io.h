@@ -22,7 +22,7 @@
 #ifndef RFLEX_IO_H
 #define RFLEX_IO_H
 
-#include "rflex-info.h"
+#include <rflex/rflex_info.h>
 
 #define MAX_NAME_LENGTH  256
 
