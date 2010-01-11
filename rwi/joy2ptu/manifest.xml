@@ -1,0 +1,19 @@
+<package>
+  <description brief="joy2ptu">
+
+     joy2ptu
+
+  </description>
+  <author>David v. Lu</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/joy2ptu</url>
+  <depend package="sensor_msgs" />
+  <depend package="geometry_msgs"/>
+  <depend package="roscpp"/>
+  <depend package="joy"/>
+
+
+</package>
+
+
