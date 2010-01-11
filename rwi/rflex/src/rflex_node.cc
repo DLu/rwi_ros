@@ -17,7 +17,7 @@ class RFlexNode {
     private:
         RFLEX* rflex;
         ros::NodeHandle n;
-        ros::Publisher pub;
+        ros::Subscriber subs[4];
         long acceleration;
         ros::Publisher sonar_pub[SONAR_RING_COUNT];
         bool isSonarOn, isBrakeOn;
@@ -48,10 +48,10 @@ class RFlexNode {
 RFlexNode::RFlexNode() {
     isSonarOn = isBrakeOn = false;
     initialized = false;
-    n.subscribe<geometry_msgs::Pose2D>("cmd_vel", 1, &RFlexNode::NewCommand, this);
-    n.subscribe<std_msgs::Int64>("cmd_acceleration", 1, &RFlexNode::SetAcceleration, this);
-    n.subscribe<std_msgs::Bool>("rflex_sonar_power", 1, &RFlexNode::ToggleSonarPower, this);
-    n.subscribe<std_msgs::Bool>("rflex_brake_power", 1, &RFlexNode::ToggleBrakePower, this);
+    subs[0] = n.subscribe<geometry_msgs::Pose2D>("cmd_vel", 1, &RFlexNode::NewCommand, this);
+    subs[1] = n.subscribe<std_msgs::Int64>("cmd_acceleration", 1, &RFlexNode::SetAcceleration, this);
+    subs[2] = n.subscribe<std_msgs::Bool>("rflex_sonar_power", 1, &RFlexNode::ToggleSonarPower, this);
+    subs[3] = n.subscribe<std_msgs::Bool>("rflex_brake_power", 1, &RFlexNode::ToggleBrakePower, this);
     acceleration = DEFAULT_TRANS_ACCELERATION;
 
     for (int i=0;i<SONAR_RING_COUNT;i++)
@@ -65,6 +65,7 @@ RFlexNode::RFlexNode() {
 
 int RFlexNode::initialize(char* port) {
     int ret;
+	rflex = new RFLEX();
     ret = rflex->initialize(port);
     if (ret < 0) //TODO Remove if nothing else here
         return ret;
@@ -98,6 +99,7 @@ void RFlexNode::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
 }
 
 void RFlexNode::spinOnce() {
+	publishOdometry();
     publishTransforms();
     // Publish Sonar Messages
     if (isSonarOn) {
@@ -135,7 +137,7 @@ void RFlexNode::publishOdometry() {
         y_odo += m_displacement * sin(a_odo);
 
         //since all odometry is 6DOF we'll need a quaternion created from yaw
-        geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(a_odo);
+        geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(0);
 
         //first, we'll publish the transform over tf
         geometry_msgs::TransformStamped odom_trans;
@@ -184,13 +186,15 @@ void RFlexNode::publishTransforms() {
     broadcaster.sendTransform(basebody_trans);
 
     geometry_msgs::TransformStamped other_trans;
+	other_trans.header.stamp = ros::Time::now();
     other_trans.header.frame_id = "body";
     other_trans.child_frame_id = "laser";
     other_trans.transform.translation.z = LASER_OFFSET;
+	other_trans.transform.rotation = tf::createQuaternionMsgFromYaw(0);
     broadcaster.sendTransform(other_trans);
 
     other_trans.child_frame_id = "ptu_base";
-    other_trans.transform.translation.x = PTU_X_OFFSET;
+    other_trans.transform.translation.y = PTU_X_OFFSET;
     other_trans.transform.translation.z = PTU_Z_OFFSET;
     broadcaster.sendTransform(other_trans);
 }
