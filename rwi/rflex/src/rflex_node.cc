@@ -50,8 +50,8 @@ RFlexNode::RFlexNode() {
     initialized = false;
     subs[0] = n.subscribe<geometry_msgs::Pose2D>("cmd_vel", 1, &RFlexNode::NewCommand, this);
     subs[1] = n.subscribe<std_msgs::Int64>("cmd_acceleration", 1, &RFlexNode::SetAcceleration, this);
-    subs[2] = n.subscribe<std_msgs::Bool>("rflex_sonar_power", 1, &RFlexNode::ToggleSonarPower, this);
-    subs[3] = n.subscribe<std_msgs::Bool>("rflex_brake_power", 1, &RFlexNode::ToggleBrakePower, this);
+    subs[2] = n.subscribe<std_msgs::Bool>("cmd_sonar_power", 1, &RFlexNode::ToggleSonarPower, this);
+    subs[3] = n.subscribe<std_msgs::Bool>("cmd_brake_power", 1, &RFlexNode::ToggleBrakePower, this);
     acceleration = DEFAULT_TRANS_ACCELERATION;
 
     for (int i=0;i<SONAR_RING_COUNT;i++)
