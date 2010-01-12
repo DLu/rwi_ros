@@ -231,12 +231,14 @@ void RFLEX::odometry_off(  ) {
 }
 
 
-void RFLEX::set_velocity( long tvel, long rvel,
-                          long acceleration ) {
+void RFLEX::set_velocity( float tvelf, float rvelf,
+                          float accelerationf ) {
     unsigned char data[MAX_COMMAND_LENGTH];
-    tvel *= ODO_DISTANCE_CONVERSION;
-    rvel *= ODO_ANGLE_CONVERSION;
-    acceleration *= ODO_DISTANCE_CONVERSION;
+
+    
+    long tvel = tvelf * ODO_DISTANCE_CONVERSION;
+    long rvel = rvelf * ODO_ANGLE_CONVERSION;
+    long acceleration = accelerationf * ODO_DISTANCE_CONVERSION;
 
     long utvel;
     long urvel;
@@ -285,7 +287,7 @@ void RFLEX::stop_robot( int deceleration) {
     set_velocity( 0, 0, deceleration);
 }
 
-int RFLEX::open_connection(char *device_name) {
+int RFLEX::open_connection(const char *device_name) {
     RFLEX_Device   rdev;
 
     strncpy( rdev.ttyport, device_name, MAX_NAME_LENGTH);
@@ -847,7 +849,7 @@ void RFLEX::update_system(   int *battery,
  * same effects are emulated at a higher level - is it possible to
  * do it here?
  */
-int RFLEX::initialize(char* devname) {
+int RFLEX::initialize(const char* devname) {
     int ret0 = open_connection(devname);
     if (ret0<0) return ret0;
 

@@ -6,7 +6,7 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/Int64.h>
 #include <std_msgs/Float32.h>
-#include <geometry_msgs/Pose2D.h>
+#include <geometry_msgs/Twist.h>
 #include <sensor_msgs/PointCloud.h>
 #include <nav_msgs/Odometry.h>
 #include <angles/angles.h>
@@ -16,7 +16,7 @@ const char* SONAR_FRAMES[] = {"b21_body", "b21_base"};
 class RFlexNode {
     private:
         RFLEX* rflex;
-        ros::NodeHandle n;
+
         ros::Subscriber subs[4];
         long acceleration;
         ros::Publisher sonar_pub[SONAR_RING_COUNT];
@@ -32,14 +32,14 @@ class RFlexNode {
         void publishTransforms();
         void publishSonar();
 
-    public:
+    public:ros::NodeHandle n;
         RFlexNode();
         ~RFlexNode();
-        int initialize(char* port);
+        int initialize(const char* port);
         void spinOnce();
 
         // Message Listeners
-        void NewCommand(const geometry_msgs::Pose2D::ConstPtr& msg);
+        void NewCommand(const geometry_msgs::Twist::ConstPtr& msg);
         void SetAcceleration (const std_msgs::Int64::ConstPtr& msg);
         void ToggleSonarPower(const std_msgs::Bool::ConstPtr& msg);
         void ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg);
@@ -48,7 +48,7 @@ class RFlexNode {
 RFlexNode::RFlexNode() {
     isSonarOn = isBrakeOn = false;
     initialized = false;
-    subs[0] = n.subscribe<geometry_msgs::Pose2D>("cmd_vel", 1, &RFlexNode::NewCommand, this);
+    subs[0] = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1, &RFlexNode::NewCommand, this);
     subs[1] = n.subscribe<std_msgs::Int64>("cmd_acceleration", 1, &RFlexNode::SetAcceleration, this);
     subs[2] = n.subscribe<std_msgs::Bool>("cmd_sonar_power", 1, &RFlexNode::ToggleSonarPower, this);
     subs[3] = n.subscribe<std_msgs::Bool>("cmd_brake_power", 1, &RFlexNode::ToggleBrakePower, this);
@@ -63,10 +63,10 @@ RFlexNode::RFlexNode() {
     //n.param("/ptu/max_pan", pmax, 90.);
 }
 
-int RFlexNode::initialize(char* port) {
+int RFlexNode::initialize(const char* port) {
     int ret;
 	rflex = new RFLEX();
-    ret = rflex->initialize(port);
+	ret = rflex->initialize(port);
     if (ret < 0) //TODO Remove if nothing else here
         return ret;
     return 0;
@@ -76,8 +76,8 @@ RFlexNode::~RFlexNode() {
     rflex->close_connection();
 }
 
-void RFlexNode::NewCommand(const geometry_msgs::Pose2D::ConstPtr& msg) {
-    rflex->set_velocity(msg->x, msg->theta, acceleration);
+void RFlexNode::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
+    rflex->set_velocity(msg->linear.x, msg->angular.z, acceleration);
 }
 
 void RFlexNode::SetAcceleration (const std_msgs::Int64::ConstPtr& msg) {
@@ -89,6 +89,7 @@ void RFlexNode::ToggleSonarPower(const std_msgs::Bool::ConstPtr& msg) {
         rflex->sonars_on();
     else
         rflex->sonars_off();
+    isSonarOn=msg->data;
 }
 
 void RFlexNode::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
@@ -96,6 +97,7 @@ void RFlexNode::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
         rflex->brake_on();
     else
         rflex->brake_off();
+    isBrakeOn = msg->data;
 }
 
 void RFlexNode::spinOnce() {
@@ -232,7 +234,10 @@ void RFlexNode::publishSonar() {
 int main(int argc, char** argv) {
     ros::init(argc, argv, "rflex");
     RFlexNode* node = new RFlexNode();
-    if (node->initialize("/dev/ttyUSB0")<0) {
+    std::string port; 
+    node->n.param<std::string>("rflex_port", port, "/dev/ttyUSB0");
+
+    if (node->initialize(port.c_str())<0) {
         ROS_ERROR("Could not initialize driver!\n");
     }
 

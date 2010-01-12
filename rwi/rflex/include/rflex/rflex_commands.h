@@ -26,7 +26,7 @@ class RFLEX {
     private:
         int fd;
 
-        int open_connection(char *);
+        int open_connection(const char *);
 
         void cmdSend(int, int, int, int, unsigned char*);
         void parseMotReport(unsigned char*);
@@ -76,7 +76,7 @@ class RFLEX {
 
         void motion_set_defaults();
 
-        int initialize(char* devname);
+        int initialize(const char* devname);
 
         void update_status(float *distance,
                            float *bearing, float *t_vel,
@@ -91,8 +91,8 @@ class RFLEX {
         void update_ir(int num_irs,
                        unsigned char *ranges);
 
-        void set_velocity(long t_vel, long r_vel,
-                          long acceleration);
+        void set_velocity(float t_vel, float r_vel,
+                          float acceleration);
         void stop_robot(int deceleration);
 
 };
