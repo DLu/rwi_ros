@@ -28,6 +28,7 @@ class RflexGui(wx.Frame):
 		
 		### Text ###
 		self.voltage = wx.TextCtrl(panel, 3, '00.00V')
+		self.voltage.SetEditable(False)
 
 		wx.EVT_BUTTON(self, 1, self.change_sonar_state)
 		wx.EVT_BUTTON(self, 2, self.change_brake_state)
@@ -81,11 +82,11 @@ class RflexGui(wx.Frame):
 			self.volts = data.data;
 			self.voltage.SetValue('%.2fV' % data.data)
 			if data.data >= 24:
-				self.voltage.SetForegroundColour('GREEN')
+				self.voltage.SetBackgroundColour('GREEN')
 			elif data.data >= 20:
-				self.voltage.SetForegroundColour('ORANGE')
+				self.voltage.SetBackgroundColour('ORANGE')
 			else:
-				self.voltage.SetForegroundColour('RED')
+				self.voltage.SetBackgroundColour('RED')
 			self.last_update = time()
 
 if __name__ == '__main__':
