@@ -79,7 +79,7 @@ class RflexGui(wx.Frame):
 		# if self.volts != data.data:
 		if True:
 			self.volts = data.data;
-			self.voltage.SetLabel('%.2fV' % data.data)
+			self.voltage.SetValue('%.2fV' % data.data)
 			if data.data >= 24:
 				self.voltage.SetForegroundColour('GREEN')
 			elif data.data >= 20:
