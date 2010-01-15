@@ -12,7 +12,7 @@
 #include <angles/angles.h>
 
 const char* SONAR_CLOUD_NAMES[] = {"sonar_cloud_body", "sonar_cloud_base"};
-const char* SONAR_FRAMES[] = {"b21_body", "b21_base"};
+const char* SONAR_FRAMES[] = {"/body", "/base"};
 class RFlexNode {
     private:
         RFLEX* rflex;
@@ -170,7 +170,7 @@ void RFlexNode::publishOdometry() {
         odom.child_frame_id = "base";
         odom.twist.twist.linear.x = tvel*cos(a_odo);
         odom.twist.twist.linear.y = tvel*sin(a_odo);
-        odom.twist.twist.angular.z = rvel; //??
+        odom.twist.twist.angular.z = rvel; 
 
         //publish the message
         odom_pub.publish(odom);
@@ -184,7 +184,7 @@ void RFlexNode::publishTransforms() {
     basebody_trans.header.frame_id = "base";
     basebody_trans.child_frame_id = "body";
     basebody_trans.transform.translation.z = BODY_OFFSET;
-    basebody_trans.transform.rotation = tf::createQuaternionMsgFromYaw(a_odo);
+    basebody_trans.transform.rotation = tf::createQuaternionMsgFromYaw(last_bearing);
     broadcaster.sendTransform(basebody_trans);
 
     geometry_msgs::TransformStamped other_trans;
@@ -207,7 +207,7 @@ void RFlexNode::publishSonar() {
     for (i=0;i<SONAR_RING_COUNT;i++)
         rings[i] = new float[SONARS_PER_RING[i]];
     rflex->update_sonar(rings);
-    for (int ringi=0;i<SONAR_RING_COUNT;i++) {
+    for (int ringi=0;ringi<SONAR_RING_COUNT;ringi++) {
         sensor_msgs::PointCloud cloud;
         cloud.header.stamp = ros::Time::now();
         cloud.header.frame_id = SONAR_FRAMES[ringi];
@@ -218,14 +218,19 @@ void RFlexNode::publishSonar() {
         //cloud.channels[0].set_values_size(num_points);
 
         double height = SONAR_RING_HEIGHT[ringi];
+	int c = 0;
         for (i = 0; i < SONARS_PER_RING[ringi]; ++i) {
             double angle = SONAR_RING_START_ANGLE[ringi] + SONAR_RING_ANGLE_INC[ringi]*i;
             angle *= M_PI / 180;
             double d = SONAR_RING_DIAMETER[ringi] + rings[ringi][i];
-            cloud.points[i].x = cos(angle)*d;
-            cloud.points[i].y = sin(angle)*d;
-            cloud.points[i].z = height;
+	    if(d < SONAR_MAX_RANGE / (float) RANGE_CONVERSION){
+	      cloud.points[c].x = cos(angle)*d;
+	      cloud.points[c].y = sin(angle)*d;
+	      cloud.points[c].z = height;
+	      c++;
+	    }
         }
+	cloud.set_points_size(c);
 
         sonar_pub[ringi].publish(cloud);
     }

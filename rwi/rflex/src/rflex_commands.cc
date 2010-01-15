@@ -765,6 +765,7 @@ void RFLEX::update_status(float *distance_o,  float *bearing_o,
 int RFLEX::update_sonar(float** rings) {
     int x,y=0;
     int ringi=0, i=0;
+    int total = 0;
 
     clear_incoming_data();
 
@@ -781,8 +782,9 @@ int RFLEX::update_sonar(float** rings) {
                 i = 0;
                 ringi++;
             }
+	    total++;
         }
-    if (i<SONAR_COUNT) {
+    if (total<SONAR_COUNT) {
         fprintf(stderr,"Requested %d sonar only %d supported\n",SONAR_COUNT,y);
         return -1;
     }
@@ -902,7 +904,8 @@ int RFLEX::initialize(const char* devname) {
         for (int i = 0; i < num_bumpers; ++i)
             bumpers[i] = 0;
     }
-    home_bearing_found=false;
+    home_bearing_found=true;
+    home_bearing = -967561;
     return 0;
 }
 
