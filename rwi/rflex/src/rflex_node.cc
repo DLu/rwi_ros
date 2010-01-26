@@ -18,7 +18,7 @@ class RFlexNode {
         RFLEX* rflex;
 
         ros::Subscriber subs[4];
-        long acceleration;
+        float acceleration;
         ros::Publisher sonar_pub[SONAR_RING_COUNT];
         bool isSonarOn, isBrakeOn;
         ros::Publisher voltage_pub, brake_power_pub, sonar_power_pub;
@@ -26,6 +26,8 @@ class RFlexNode {
         tf::TransformBroadcaster broadcaster;
         float last_distance, last_bearing;
         float x_odo, y_odo, a_odo, tvel, rvel;
+		float cmd_t, cmd_r;
+		bool cmd_dirty, brake_dirty, sonar_dirty;
         bool initialized;
 
         void publishOdometry();
@@ -47,6 +49,8 @@ class RFlexNode {
 
 RFlexNode::RFlexNode() {
     isSonarOn = isBrakeOn = false;
+	cmd_dirty = brake_dirty = sonar_dirty = false;
+	cmd_t = cmd_r = 0.0;
     initialized = false;
     subs[0] = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1, &RFlexNode::NewCommand, this);
     subs[1] = n.subscribe<std_msgs::Int64>("cmd_acceleration", 1, &RFlexNode::SetAcceleration, this);
@@ -66,10 +70,7 @@ RFlexNode::RFlexNode() {
 int RFlexNode::initialize(const char* port) {
     int ret;
 	rflex = new RFLEX();
-	ret = rflex->initialize(port);
-    if (ret < 0) //TODO Remove if nothing else here
-        return ret;
-    return 0;
+	return rflex->initialize(port);
 }
 
 RFlexNode::~RFlexNode() {
@@ -77,7 +78,9 @@ RFlexNode::~RFlexNode() {
 }
 
 void RFlexNode::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
-    rflex->set_velocity(msg->linear.x, msg->angular.z, acceleration);
+	cmd_t = msg->linear.x;
+	cmd_r = msg->angular.z;
+	cmd_dirty = true;
 }
 
 void RFlexNode::SetAcceleration (const std_msgs::Int64::ConstPtr& msg) {
@@ -85,22 +88,35 @@ void RFlexNode::SetAcceleration (const std_msgs::Int64::ConstPtr& msg) {
 }
 
 void RFlexNode::ToggleSonarPower(const std_msgs::Bool::ConstPtr& msg) {
-    if (msg->data)
-        rflex->sonars_on();
-    else
-        rflex->sonars_off();
     isSonarOn=msg->data;
+	sonar_dirty = true;
 }
 
 void RFlexNode::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
-    if (msg->data)
-        rflex->brake_on();
-    else
-        rflex->brake_off();
     isBrakeOn = msg->data;
+	brake_dirty = true;
 }
 
 void RFlexNode::spinOnce() {
+	ROS_INFO("Spin Once");
+	if(cmd_dirty){
+		rflex->set_velocity(cmd_t, cmd_r, acceleration);
+		cmd_dirty = false;
+	}
+	if(sonar_dirty){
+		if(isSonarOn)
+			rflex->sonars_on();
+		else
+			rflex->sonars_off();
+		sonar_dirty = false;
+	}
+	if(brake_dirty){
+		if(isBrakeOn)
+			rflex->brake_on();
+		else
+			rflex->brake_off();
+		brake_dirty = false;
+	}
 	publishOdometry();
     publishTransforms();
     // Publish Sonar Messages
@@ -241,12 +257,13 @@ int main(int argc, char** argv) {
     RFlexNode* node = new RFlexNode();
     std::string port; 
     node->n.param<std::string>("rflex_port", port, "/dev/ttyUSB0");
-
     if (node->initialize(port.c_str())<0) {
         ROS_ERROR("Could not initialize driver!\n");
     }
+	
 
-    int hz = 30;
+    int hz;
+	node->n.param("rflex_rate", hz, 30);
     ros::Rate loop_rate(hz);
 
     while (ros::ok()) {

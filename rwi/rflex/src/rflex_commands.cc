@@ -298,11 +298,12 @@ int RFLEX::open_connection(const char *device_name) {
     rdev.hwf            = 0;
     rdev.swf            = 0;
 
-    printf("trying port %s\n",rdev.ttyport);
+    printf("trying port %s...",rdev.ttyport);
     if (DEVICE_connect_port( &rdev )<0) {
         fprintf(stderr,"Can't open device %s\n",rdev.ttyport);
         return -1;
     }
+	printf("Connected!\n");
 
     fd = rdev.fd;
     odometry_on(100000);
