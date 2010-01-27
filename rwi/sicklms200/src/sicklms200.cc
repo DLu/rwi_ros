@@ -186,9 +186,7 @@ driver
 /** @} */
 
 
-
-#include <config.h>
-
+#include <ros/ros.h>
 #include <assert.h>
 #include <math.h>
 #include <errno.h>
@@ -202,8 +200,6 @@ driver
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include <laser_config.h>
-
 #undef HAVE_HI_SPEED_SERIAL
 #ifdef HAVE_LINUX_SERIAL_H
   #ifndef DISABLE_HIGHSPEEDSICK
@@ -212,11 +208,7 @@ driver
   #endif
 #endif
 
-#include <libplayercore/playercore.h>
-#include <libplayerinterface/playerxdr.h>
-#include <replace/replace.h>
-
-#define DEFAULT_LASER_PORT "/dev/ttyS1"
+#define DEFAULT_LASER_PORT "/dev/ttyUSB2"
 #define DEFAULT_LASER_CONNECT_RATE 9600
 #define DEFAULT_LASER_TRANSFER_RATE 38400
 #define DEFAULT_LASER_RETRIES 3
@@ -224,20 +216,16 @@ driver
 
 
 // The laser device class.
-class SickLMS200 : public ThreadedDriver
+class SickLMS200
 {
   public:
-
+	ros::NodeHandle n;
     // Constructor
-    SickLMS200(ConfigFile* cf, int section);
+    SickLMS200();
 
     int MainSetup();
     void MainQuit();
 
-    // MessageHandler
-    int ProcessMessage(QueuePointer & resp_queue,
-		       player_msghdr * hdr,
-		       void * data);
   private:
 
     // Main function for device thread.
@@ -325,12 +313,6 @@ class SickLMS200 : public ThreadedDriver
 
   protected:
 
-	IntProperty PLSMode;
-
-    // Laser pose in robot cs.
-    double pose[3];
-    double size[2];
-
     // Name of device used to communicate with the laser
     const char *device_name;
 
@@ -390,20 +372,6 @@ class SickLMS200 : public ThreadedDriver
 #endif
 };
 
-// a factory creation function
-Driver* SickLMS200_Init(ConfigFile* cf, int section)
-{
-  return((Driver*)(new SickLMS200(cf, section)));
-}
-
-// a driver registration function
-void sicklms200_Register(DriverTable* table)
-{
-  table->AddDriver("sicklms200", SickLMS200_Init);
-  table->AddDriver("sickpls", SickLMS200_Init);
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 // Device codes
 
@@ -412,26 +380,18 @@ void sicklms200_Register(DriverTable* table)
 #define NACK    0x92
 #define CRC16_GEN_POL 0x8005
 
-
-////////////////////////////////////////////////////////////////////////////////
-// Error macros
-#define RETURN_ERROR(erc, m) {PLAYER_ERROR(m); return erc;}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Constructor
-SickLMS200::SickLMS200(ConfigFile* cf, int section)
-    : ThreadedDriver(cf, section, true, PLAYER_MSGQUEUE_DEFAULT_MAXLEN, PLAYER_LASER_CODE),
-      PLSMode("pls_mode",0,true,this,cf,section)
+SickLMS200::SickLMS200()
 {
-  // Laser geometry.
-  this->pose[0] = cf->ReadTupleLength(section, "pose", 0, 0.0);
-  this->pose[1] = cf->ReadTupleLength(section, "pose", 1, 0.0);;
-  this->pose[2] = cf->ReadTupleLength(section, "pose", 2, 0.0);;
-  this->size[0] = 0.15;
-  this->size[1] = 0.15;
-
   // Serial port
-  this->device_name = cf->ReadString(section, "port", DEFAULT_LASER_PORT);
+  std::string port; 
+  n.param("port", port, DEFAULT_LASER_PORT);
+	this->device_name = port.c_str();
+	XmlRpc::XmlRpcValue xml_connect_rates;
+  int* default_connect_rates = {9600, 38400, 500000};
+  XmlRpc::XmlRpcValue defaultXml = new XmlRpcValue((void*)default_connect_rates, 3);
+  n.param("connect_rate", xml_connect_rates, );
 
   // Serial rate
   if(cf->GetTupleCount(section, "connect_rate") == 0)
@@ -455,12 +415,10 @@ SickLMS200::SickLMS200(ConfigFile* cf, int section)
       this->num_connect_rates++;
     }
   }
+n.param("transfer_rate", this->transfer_rate, DEFAULT_LASER_TRANSFER_RATE);
 
-  this->transfer_rate = cf->ReadInt(section, "transfer_rate", DEFAULT_LASER_TRANSFER_RATE);
   this->current_rate = 0;
-  this->retry_limit = cf->ReadInt(section, "retry", 0) + 1;
-
-
+  n.param("retry", this->retry_limit, 0)+1;
 
 #ifdef HAVE_HI_SPEED_SERIAL
   this->serial_high_speed_mode = cf->ReadInt(section, "serial_high_speed_mode", 0);
@@ -527,7 +485,7 @@ SickLMS200::SickLMS200(ConfigFile* cf, int section)
 // Set up the device
 int SickLMS200::MainSetup()
 {
-  PLAYER_MSG1(2, "Laser initialising (%s)", this->device_name);
+  ROS_INFO(2, "Laser initialising (%s)", this->device_name);
 
   // Open the terminal
   if (OpenTerm())
@@ -539,13 +497,13 @@ int SickLMS200::MainSetup()
 
   for(int i=0;i<this->retry_limit;i++)
   {
-    PLAYER_MSG1(2, "Connection attempt #%d", i);
+    ROS_INFO(2, "Connection attempt #%d", i);
     // Try connecting at each rate, in order
     for(int j=0;j<this->num_connect_rates;j++)
     {
       this->connect_rate = this->connect_rates[j];
 
-      PLAYER_MSG1(2, "connecting at %d", this->connect_rate);
+      ROS_INFO(2, "connecting at %d", this->connect_rate);
       if (ChangeTermSpeed(this->connect_rate))
         continue;
       if (RequestLaserStopStream() == 0)
@@ -553,7 +511,7 @@ int SickLMS200::MainSetup()
 
       if(this->current_rate != 0)
       {
-        PLAYER_MSG1(2, "connected at %d!", this->current_rate);
+        ROS_INFO(2, "connected at %d!", this->current_rate);
         break;
       }
     }
