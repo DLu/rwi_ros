@@ -70,7 +70,6 @@ RFlexNode::RFlexNode() {
 }
 
 int RFlexNode::initialize(const char* port) {
-    int ret;
     rflex = new RFLEX();
     return rflex->initialize(port);
 }

@@ -30,7 +30,7 @@ const int SONARS_PER_BANK[] = {4, 4, 4, 4, 4, 4,
 #define SONAR_MAX_PER_BANK 16
 #define SONAR_RING_COUNT 2
 const int SONARS_PER_RING[] = {24, 24};
-const float SONAR_RING_START_ANGLE[] = {172.5, 240.};
+const float SONAR_RING_START_ANGLE[] = {352.5, 240.};
 const float SONAR_RING_ANGLE_INC[] = {-15, -15};
 const float SONAR_RING_DIAMETER[] = {.25, .26};
 const float SONAR_RING_HEIGHT[] = {0.055, -0.06};
