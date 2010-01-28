@@ -26,15 +26,17 @@ class RFlexNode {
         tf::TransformBroadcaster broadcaster;
         float last_distance, last_bearing;
         float x_odo, y_odo, a_odo, tvel, rvel;
-		float cmd_t, cmd_r;
-		bool cmd_dirty, brake_dirty, sonar_dirty;
+        float cmd_t, cmd_r;
+        bool cmd_dirty, brake_dirty, sonar_dirty;
         bool initialized;
+        int updateTimer;
 
         void publishOdometry();
         void publishTransforms();
         void publishSonar();
 
-    public:ros::NodeHandle n;
+    public:
+        ros::NodeHandle n;
         RFlexNode();
         ~RFlexNode();
         int initialize(const char* port);
@@ -49,8 +51,9 @@ class RFlexNode {
 
 RFlexNode::RFlexNode() {
     isSonarOn = isBrakeOn = false;
-	cmd_dirty = brake_dirty = sonar_dirty = false;
-	cmd_t = cmd_r = 0.0;
+    cmd_dirty = brake_dirty = sonar_dirty = false;
+    cmd_t = cmd_r = 0.0;
+    updateTimer = 0;
     initialized = false;
     subs[0] = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1, &RFlexNode::NewCommand, this);
     subs[1] = n.subscribe<std_msgs::Int64>("cmd_acceleration", 1, &RFlexNode::SetAcceleration, this);
@@ -64,13 +67,12 @@ RFlexNode::RFlexNode() {
     brake_power_pub = n.advertise<std_msgs::Bool>("brake_power", 1);
     voltage_pub = n.advertise<std_msgs::Float32>("voltage", 1);
     odom_pub = n.advertise<nav_msgs::Odometry>("odom", 50);
-    //n.param("/ptu/max_pan", pmax, 90.);
 }
 
 int RFlexNode::initialize(const char* port) {
     int ret;
-	rflex = new RFLEX();
-	return rflex->initialize(port);
+    rflex = new RFLEX();
+    return rflex->initialize(port);
 }
 
 RFlexNode::~RFlexNode() {
@@ -78,9 +80,9 @@ RFlexNode::~RFlexNode() {
 }
 
 void RFlexNode::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
-	cmd_t = msg->linear.x;
-	cmd_r = msg->angular.z;
-	cmd_dirty = true;
+    cmd_t = msg->linear.x;
+    cmd_r = msg->angular.z;
+    cmd_dirty = true;
 }
 
 void RFlexNode::SetAcceleration (const std_msgs::Int64::ConstPtr& msg) {
@@ -89,35 +91,34 @@ void RFlexNode::SetAcceleration (const std_msgs::Int64::ConstPtr& msg) {
 
 void RFlexNode::ToggleSonarPower(const std_msgs::Bool::ConstPtr& msg) {
     isSonarOn=msg->data;
-	sonar_dirty = true;
+    sonar_dirty = true;
 }
 
 void RFlexNode::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
     isBrakeOn = msg->data;
-	brake_dirty = true;
+    brake_dirty = true;
 }
 
 void RFlexNode::spinOnce() {
-	ROS_INFO("Spin Once");
-	if(cmd_dirty){
-		rflex->set_velocity(cmd_t, cmd_r, acceleration);
-		cmd_dirty = false;
-	}
-	if(sonar_dirty){
-		if(isSonarOn)
-			rflex->sonars_on();
-		else
-			rflex->sonars_off();
-		sonar_dirty = false;
-	}
-	if(brake_dirty){
-		if(isBrakeOn)
-			rflex->brake_on();
-		else
-			rflex->brake_off();
-		brake_dirty = false;
-	}
-	publishOdometry();
+    if (cmd_dirty) {
+        rflex->set_velocity(cmd_t, cmd_r, acceleration);
+        cmd_dirty = false;
+    }
+    if (sonar_dirty) {
+        if (isSonarOn)
+            rflex->sonars_on();
+        else
+            rflex->sonars_off();
+        sonar_dirty = false;
+    }
+    if (brake_dirty) {
+        if (isBrakeOn)
+            rflex->brake_on();
+        else
+            rflex->brake_off();
+        brake_dirty = false;
+    }
+    publishOdometry();
     publishTransforms();
     // Publish Sonar Messages
     if (isSonarOn) {
@@ -125,22 +126,26 @@ void RFlexNode::spinOnce() {
     }
 
     int batt, brake;
-    rflex->update_system(&batt, &brake);
+    if (updateTimer++ % 100 == 0) {
+        rflex->update_system(&batt, &brake);
 
 
-    std_msgs::Bool bmsg;
-    bmsg.data = isSonarOn;
-    sonar_power_pub.publish(bmsg);
-    bmsg.data = isBrakeOn;
-    brake_power_pub.publish(bmsg);
-    std_msgs::Float32 vmsg;
-    vmsg.data = batt/100.0 + POWER_OFFSET;
-    voltage_pub.publish(vmsg);
+        std_msgs::Bool bmsg;
+        bmsg.data = isSonarOn;
+        sonar_power_pub.publish(bmsg);
+        bmsg.data = isBrakeOn;
+        brake_power_pub.publish(bmsg);
+        std_msgs::Float32 vmsg;
+        vmsg.data = batt/100.0 + POWER_OFFSET;
+        voltage_pub.publish(vmsg);
+        updateTimer = 1;
+    }
 
 }
 
 void RFlexNode::publishOdometry() {
     float distance, bearing;
+
     rflex->update_status(&distance, &bearing, &tvel, &rvel);
 
     if (!initialized) {
@@ -186,7 +191,7 @@ void RFlexNode::publishOdometry() {
         odom.child_frame_id = "base";
         odom.twist.twist.linear.x = tvel*cos(a_odo);
         odom.twist.twist.linear.y = tvel*sin(a_odo);
-        odom.twist.twist.angular.z = rvel; 
+        odom.twist.twist.angular.z = rvel;
 
         //publish the message
         odom_pub.publish(odom);
@@ -204,11 +209,11 @@ void RFlexNode::publishTransforms() {
     broadcaster.sendTransform(basebody_trans);
 
     geometry_msgs::TransformStamped other_trans;
-	other_trans.header.stamp = ros::Time::now();
+    other_trans.header.stamp = ros::Time::now();
     other_trans.header.frame_id = "body";
     other_trans.child_frame_id = "laser";
     other_trans.transform.translation.z = LASER_OFFSET;
-	other_trans.transform.rotation = tf::createQuaternionMsgFromYaw(0);
+    other_trans.transform.rotation = tf::createQuaternionMsgFromYaw(0);
     broadcaster.sendTransform(other_trans);
 
     other_trans.child_frame_id = "ptu_base";
@@ -222,6 +227,7 @@ void RFlexNode::publishSonar() {
     int i;
     for (i=0;i<SONAR_RING_COUNT;i++)
         rings[i] = new float[SONARS_PER_RING[i]];
+
     rflex->update_sonar(rings);
     for (int ringi=0;ringi<SONAR_RING_COUNT;ringi++) {
         sensor_msgs::PointCloud cloud;
@@ -234,19 +240,19 @@ void RFlexNode::publishSonar() {
         //cloud.channels[0].set_values_size(num_points);
 
         double height = SONAR_RING_HEIGHT[ringi];
-	int c = 0;
+        int c = 0;
         for (i = 0; i < SONARS_PER_RING[ringi]; ++i) {
             double angle = SONAR_RING_START_ANGLE[ringi] + SONAR_RING_ANGLE_INC[ringi]*i;
             angle *= M_PI / 180;
             double d = SONAR_RING_DIAMETER[ringi] + rings[ringi][i];
-	    if(d < SONAR_MAX_RANGE / (float) RANGE_CONVERSION){
-	      cloud.points[c].x = cos(angle)*d;
-	      cloud.points[c].y = sin(angle)*d;
-	      cloud.points[c].z = height;
-	      c++;
-	    }
+            if (d < SONAR_MAX_RANGE / (float) RANGE_CONVERSION) {
+                cloud.points[c].x = cos(angle)*d;
+                cloud.points[c].y = sin(angle)*d;
+                cloud.points[c].z = height;
+                c++;
+            }
         }
-	cloud.set_points_size(c);
+        cloud.set_points_size(c);
 
         sonar_pub[ringi].publish(cloud);
     }
@@ -255,15 +261,15 @@ void RFlexNode::publishSonar() {
 int main(int argc, char** argv) {
     ros::init(argc, argv, "rflex");
     RFlexNode* node = new RFlexNode();
-    std::string port; 
+    std::string port;
     node->n.param<std::string>("rflex_port", port, "/dev/ttyUSB0");
     if (node->initialize(port.c_str())<0) {
         ROS_ERROR("Could not initialize driver!\n");
     }
-	
+
 
     int hz;
-	node->n.param("rflex_rate", hz, 30);
+    node->n.param("rflex_rate", hz, 30);
     ros::Rate loop_rate(hz);
 
     while (ros::ok()) {
