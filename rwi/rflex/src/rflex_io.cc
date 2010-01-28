@@ -250,6 +250,7 @@ writeData( int fd, unsigned char *buf, int nChars ) {
         }
         usleep(1000);
     }
+    tcflush(fd, TCIFLUSH);
     return TRUE;
 }
 

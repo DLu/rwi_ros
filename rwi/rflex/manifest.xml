@@ -11,9 +11,11 @@
   <depend package="sensor_msgs"/>
   <depend package="geometry_msgs"/>
   <depend package="nav_msgs" />
-  <depend package="pr2_msgs" /> 
   <depend package="tf" />
   <depend package="angles" />
+  <depend package="urdf" />
+  <depend package="robot_state_publisher" />
+  <depend package="kdl_parser" />
 
 </package>
 

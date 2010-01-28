@@ -79,9 +79,11 @@ RFlexNode::~RFlexNode() {
 }
 
 void RFlexNode::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
-    cmd_t = msg->linear.x;
-    cmd_r = msg->angular.z;
-    cmd_dirty = true;
+    if (!(fabs(cmd_t - msg->linear.x)<0.0001 && fabs(cmd_r - msg->angular.z )< 0.0001)) {
+        cmd_t = msg->linear.x;
+        cmd_r = msg->angular.z;
+        rflex->set_velocity(cmd_t, cmd_r, acceleration);
+    }
 }
 
 void RFlexNode::SetAcceleration (const std_msgs::Int64::ConstPtr& msg) {
@@ -99,16 +101,18 @@ void RFlexNode::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
 }
 
 void RFlexNode::spinOnce() {
-    if (cmd_dirty) {
-        rflex->set_velocity(cmd_t, cmd_r, acceleration);
-        cmd_dirty = false;
-    }
+    /*if (cmd_dirty) {
+    }*/
     if (sonar_dirty) {
         if (isSonarOn)
             rflex->sonars_on();
         else
             rflex->sonars_off();
         sonar_dirty = false;
+
+        std_msgs::Bool bmsg;
+        bmsg.data = isSonarOn;
+        sonar_power_pub.publish(bmsg);
     }
     if (brake_dirty) {
         if (isBrakeOn)
@@ -129,9 +133,8 @@ void RFlexNode::spinOnce() {
         rflex->update_system(&batt, &brake);
 
 
+
         std_msgs::Bool bmsg;
-        bmsg.data = isSonarOn;
-        sonar_power_pub.publish(bmsg);
         bmsg.data = isBrakeOn;
         brake_power_pub.publish(bmsg);
         std_msgs::Float32 vmsg;
@@ -139,6 +142,7 @@ void RFlexNode::spinOnce() {
         voltage_pub.publish(vmsg);
         updateTimer = 1;
     }
+
 
 }
 
@@ -268,7 +272,7 @@ int main(int argc, char** argv) {
 
 
     int hz;
-    node->n.param("rflex_rate", hz, 30);
+    node->n.param("rflex_rate", hz, 5);
     ros::Rate loop_rate(hz);
 
     while (ros::ok()) {
