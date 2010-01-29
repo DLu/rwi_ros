@@ -9,6 +9,9 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/sicklms200</url>
   <depend package="roscpp" />
+  <depend package="xmlrpcpp" /> 
+  <depend package="sensor_msgs" />
+  <depend package="angles" />
 
 </package>
 
