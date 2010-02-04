@@ -22,21 +22,19 @@
 #ifndef RFLEX_COMMANDS_H
 #define RFLEX_COMMANDS_H
 
+#include <rflex/serial.h>
+
 class RFLEX {
     private:
-        int fd;
-
         int open_connection(const char *);
 
-        void cmdSend(int, int, int, int, unsigned char*);
-        void parseMotReport(unsigned char*);
-        void parseDioReport( unsigned char* );
-        void parseIrReport( unsigned char *);
-        void parseSysReport(unsigned char*);
-        void parseSonarReport( unsigned char *);
-        void parseJoyReport( unsigned char * );
-        int  parseBuffer( unsigned char*, unsigned int);
-        int  clear_incoming_data();
+        int  parsePacket(RFlexPacket*);
+        void parseMotReport(RFlexPacket*);
+        void parseDioReport(RFlexPacket*);
+        void parseIrReport(RFlexPacket*);
+        void parseSysReport(RFlexPacket*);
+        void parseSonarReport(RFlexPacket*);
+        void parseJoyReport(RFlexPacket*);
 
         int distance, bearing, t_vel, r_vel;
         int *ranges, *oldranges;
@@ -55,28 +53,21 @@ class RFLEX {
 
         int home_bearing;
         int home_bearing_found;
+        pthread_t m_read_thread;
+
+        SerialPort* serial;
 
     public:
+        int initialize(const char* devname);
         int close_connection();
 
-        void sonars_on();
-        void sonars_off();
-
-        void ir_on();
-        void ir_off();
-
-        void brake_on();
-        void brake_off();
-
-        void odometry_off(  );
-        void odometry_on( long period );
-
-        void digital_io_on( int period );
-        void digital_io_off(  );
-
+        void setSonarPower(bool);
+        void setIrPower(bool);
+        void setBrakePower(bool);
+        void setDigitalIoPeriod(long period);
+        void setOdometryPeriod(long period);
         void motion_set_defaults();
 
-        int initialize(const char* devname);
 
         void update_status(float *distance,
                            float *bearing, float *t_vel,
@@ -90,10 +81,13 @@ class RFLEX {
                             char *values);
         void update_ir(int num_irs,
                        unsigned char *ranges);
-
-        void set_velocity(float t_vel, float r_vel,
-                          float acceleration);
+        void set_velocityF( float tvelf, float rvelf,
+                            float accelerationf );
+        void set_velocity(long t_vel, long r_vel,
+                          long acceleration);
         void stop_robot(int deceleration);
+
+        void parsePackets();
 
 };
 #endif

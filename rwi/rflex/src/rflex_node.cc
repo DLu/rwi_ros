@@ -79,11 +79,9 @@ RFlexNode::~RFlexNode() {
 }
 
 void RFlexNode::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
-    if (!(fabs(cmd_t - msg->linear.x)<0.0001 && fabs(cmd_r - msg->angular.z )< 0.0001)) {
-        cmd_t = msg->linear.x;
-        cmd_r = msg->angular.z;
-        rflex->set_velocity(cmd_t, cmd_r, acceleration);
-    }
+    cmd_t = msg->linear.x;
+    cmd_r = msg->angular.z;
+
 }
 
 void RFlexNode::SetAcceleration (const std_msgs::Int64::ConstPtr& msg) {
@@ -101,46 +99,41 @@ void RFlexNode::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
 }
 
 void RFlexNode::spinOnce() {
-    /*if (cmd_dirty) {
-    }*/
+    rflex->parsePackets();
+
+    rflex->set_velocityF(cmd_t, cmd_r, acceleration);
     if (sonar_dirty) {
-        if (isSonarOn)
-            rflex->sonars_on();
-        else
-            rflex->sonars_off();
+        rflex->setSonarPower(isSonarOn);
         sonar_dirty = false;
 
-        std_msgs::Bool bmsg;
-        bmsg.data = isSonarOn;
-        sonar_power_pub.publish(bmsg);
+
     }
+    std_msgs::Bool smsg;
+    smsg.data = isSonarOn;
+    sonar_power_pub.publish(smsg);
+
     if (brake_dirty) {
-        if (isBrakeOn)
-            rflex->brake_on();
-        else
-            rflex->brake_off();
+        rflex->setBrakePower(isBrakeOn);
         brake_dirty = false;
     }
+
     publishOdometry();
     publishTransforms();
     // Publish Sonar Messages
     if (isSonarOn) {
         publishSonar();
     }
+    if (updateTimer++==100) {
+        int batt, brake;
 
-    int batt, brake;
-    if (updateTimer++ % 100 == 0) {
         rflex->update_system(&batt, &brake);
-
-
-
         std_msgs::Bool bmsg;
         bmsg.data = isBrakeOn;
         brake_power_pub.publish(bmsg);
         std_msgs::Float32 vmsg;
         vmsg.data = batt/100.0 + POWER_OFFSET;
         voltage_pub.publish(vmsg);
-        updateTimer = 1;
+        updateTimer = 0;
     }
 
 
@@ -266,13 +259,15 @@ int main(int argc, char** argv) {
     RFlexNode* node = new RFlexNode();
     std::string port;
     node->n.param<std::string>("rflex_port", port, "/dev/ttyUSB0");
+    ROS_INFO("Attempting to connect to %s", port.c_str());
     if (node->initialize(port.c_str())<0) {
         ROS_ERROR("Could not initialize driver!\n");
     }
+    ROS_INFO("Connected!");
 
 
     int hz;
-    node->n.param("rflex_rate", hz, 5);
+    node->n.param("rflex_rate", hz, 10);
     ros::Rate loop_rate(hz);
 
     while (ros::ok()) {
