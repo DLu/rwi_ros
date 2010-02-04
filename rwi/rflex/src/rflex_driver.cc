@@ -23,7 +23,7 @@
 #include <rflex/rflex_configs.h>
 
 
-#include <rflex/rflex_commands.h>
+#include <rflex/rflex_driver.h>
 #include <rflex/rflex_packet.h>
 
 #include <stdio.h>
@@ -632,11 +632,6 @@ int RFLEX::open_connection(const char *device_name) {
     serial = new SerialPort();
     if (serial->open_connection(device_name, 115200)<0)
         return -1;
-
-#warning move outside
-    setOdometryPeriod (100000);
-    setDigitalIoPeriod(100000);
-    motion_set_defaults();
     return 0;
 }
 
@@ -654,6 +649,9 @@ int RFLEX::close_connection() {
 int RFLEX::initialize(const char* devname) {
     int ret0 = open_connection(devname);
     if (ret0<0) return ret0;
+    setOdometryPeriod (100000);
+    setDigitalIoPeriod(100000);
+    motion_set_defaults();
 
     int x;
     //mark all non-existant (or no-data) sonar as such

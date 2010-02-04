@@ -56,8 +56,8 @@ int SerialPort::open_connection(const char* port, const int speed) {
     }
 
     setBaudRate(speed);
-	
-	pthread_mutex_init(&m_write_mutex, NULL);
+
+    pthread_mutex_init(&m_write_mutex, NULL);
     pthread_create(&m_read_thread, NULL, SerialPort::readThread, this);
 
     return 0;
@@ -222,22 +222,21 @@ speed_t SerialPort::baud(const int speed) {
 }
 
 void SerialPort::sendPacket(RFlexPacket* pkt) {
-	pthread_mutex_lock(&m_write_mutex);
+    pthread_mutex_lock(&m_write_mutex);
     int length = pkt->length();
     unsigned char* data = pkt->data();
     int bytes_written = 0;
 
     while (bytes_written < length) {
         int n = write(m_fd, data + bytes_written, length - bytes_written);
-        if (n < 0){
-			pthread_mutex_unlock(&m_write_mutex);
+        if (n < 0) {
+            pthread_mutex_unlock(&m_write_mutex);
             return;
-		}
-        else
+        } else
             bytes_written += n;
 
         usleep(1000);
     }
-	pthread_mutex_unlock(&m_write_mutex);
+    pthread_mutex_unlock(&m_write_mutex);
 }
 

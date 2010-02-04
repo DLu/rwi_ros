@@ -1,7 +1,7 @@
 #include <string>
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
-#include <rflex/rflex_commands.h>
+#include <rflex/rflex_driver.h>
 #include <rflex/rflex_configs.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Int64.h>
