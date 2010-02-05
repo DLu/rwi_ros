@@ -86,8 +86,8 @@ int main(int argc, char** argv) {
 
     int hz = 30;
     ros::Rate loop_rate(hz);
-    pub = n.advertise<sensor_msgs::JointState>("ptu_cmd", 1);
-    pub2 = n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+    pub = n.advertise<sensor_msgs::JointState>("/ptu/cmd", 1);
+    pub2 = n.advertise<geometry_msgs::Twist>("/b21/cmd_vel", 1);
     n.param("/ptu/max_pan", pmax, 90.);
     n.param("/ptu/min_pan", pmin, -90.);
     n.param("/ptu/max_tilt", tmax, 30.);
@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
     ros::Subscriber sub =
         n.subscribe<joy::Joy>("joy", 1, joyRcvd);
     ros::Subscriber sub2=
-        n.subscribe<sensor_msgs::JointState>("ptu_state", 1, posRcvd);
+        n.subscribe<sensor_msgs::JointState>("/ptu/state", 1, posRcvd);
 
     while (ros::ok()) {
 

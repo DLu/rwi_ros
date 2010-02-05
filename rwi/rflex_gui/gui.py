@@ -40,8 +40,8 @@ class RflexGui(wx.Frame):
 		panel.SetSizer(box)
 		self.Center()
 		
-		self.sonar_pub = rospy.Publisher('cmd_sonar_power', Bool)
-		self.brake_pub = rospy.Publisher('cmd_brake_power', Bool)
+		self.sonar_pub = rospy.Publisher('/b21/cmd_sonar_power', Bool)
+		self.brake_pub = rospy.Publisher('/b21/cmd_brake_power', Bool)
 		
 		box.Fit(self)
 		
@@ -96,9 +96,9 @@ if __name__ == '__main__':
 		gui.Show()
 
 		rospy.init_node('rflex_gui')
-		rospy.Subscriber("sonar_power", Bool, gui.onsonar)
-		rospy.Subscriber("brake_power", Bool, gui.onbrake)
-		rospy.Subscriber("voltage", Float32, gui.onvoltage)
+		rospy.Subscriber("/b21/sonar_power", Bool, gui.onsonar)
+		rospy.Subscriber("/b21/brake_power", Bool, gui.onbrake)
+		rospy.Subscriber("/b21/voltage", Float32, gui.onvoltage)
 		
 		app.MainLoop()
 	except rospy.ROSInterruptException: pass
