@@ -1,14 +1,13 @@
 <stack name="rwi" version="0.1.0">
   <description brief="drivers for the rwi family of robots">
-
-     Driver code for robots produced by Real World Industries.
-
+	Drivers for the robots produced by Real World Interface, Inc.
   </description>
-  <author>Maintained by Erik Karulf</author>
+  <author>Maintained by David V. Lu/davidlu@wustl.edu</author>
   <license>BSD</license>  
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/rwi</url>
   <depend stack="common_msgs"/>
   <depend stack="geometry"/>
   <depend stack="ros"/>
+
 </stack>

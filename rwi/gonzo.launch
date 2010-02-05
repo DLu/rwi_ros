@@ -1,0 +1,6 @@
+<launch>
+	<node name="joy" pkg="joy" type="joy_node" />
+	<node name="joy2ptu" pkg="joy2ptu" type="joy2ptu" />
+	<node name="rflexgui" pkg="rflex_gui" type="gui.py" />
+</launch>
+
