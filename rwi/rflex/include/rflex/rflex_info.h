@@ -22,29 +22,7 @@
 #ifndef RFLEX_INFO_H
 #define RFLEX_INFO_H
 
-#ifndef TRUE
-#define TRUE  1
-#endif
-
-#ifndef FALSE
-#define FALSE 0
-#endif
-
-#define MAX_NAME_LENGTH                256
 #define MAX_COMMAND_LENGTH             256
-#define MAX_ACMD_SIZE                   48
-#define MAX_NUM_LOOPS                   30
-#define MAX_BUFFER_LENGTH             4096
-
-#define EPSILON                     0.0001
-
-#define TIMEOUT                         -1
-#define WRONG                            0
-#define OK                               1
-
-#define B_STX                         0x02
-#define B_ETX                         0x03
-#define B_ESC                         0x1b
 
 #define STD_TRANS_TORQUE    30000
 #define STD_ROT_ACC         100000
@@ -107,17 +85,10 @@
 
 #define JSTK_GET_STATE		     0
 
-enum PARITY_TYPE   { N, E, O };
+#define HEADING_HOME_ADDRESS 0x31
+#define BUMPER_ADDRESS 0x40
 
-typedef struct {
-    char                       ttyport[MAX_NAME_LENGTH];
-    int                        baud;
-    enum PARITY_TYPE           parity;
-    int                        fd;
-    int                        databits;
-    int                        stopbits;
-    int                        hwf;
-    int                        swf;
-} RFLEX_Device;
+#define SONAR_MAX_COUNT 224
+#define SONAR_AGE 1
 
 #endif

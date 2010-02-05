@@ -1,8 +1,7 @@
 #include <string>
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
-#include <rflex/rflex_driver.h>
-#include <rflex/rflex_configs.h>
+#include <rflex/b21_driver.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Int64.h>
 #include <std_msgs/Float32.h>
@@ -11,21 +10,28 @@
 #include <nav_msgs/Odometry.h>
 #include <angles/angles.h>
 
-const char* SONAR_CLOUD_NAMES[] = {"sonar_cloud_body", "sonar_cloud_base"};
-const char* SONAR_FRAMES[] = {"/body", "/base"};
-class RFlexNode {
+
+
+#define BASE_OFFSET 0.15
+#define BODY_OFFSET 0.485
+#define LASER_OFFSET -0.275
+#define PTU_X_OFFSET 0.09
+#define PTU_Z_OFFSET .755
+
+class B21Node {
     private:
-        RFLEX* rflex;
+        B21* driver;
 
         ros::Subscriber subs[4];
         float acceleration;
-        ros::Publisher sonar_pub[SONAR_RING_COUNT];
+        ros::Publisher base_sonar_pub;
+        ros::Publisher body_sonar_pub;
         bool isSonarOn, isBrakeOn;
         ros::Publisher voltage_pub, brake_power_pub, sonar_power_pub;
         ros::Publisher odom_pub;
         tf::TransformBroadcaster broadcaster;
         float last_distance, last_bearing;
-        float x_odo, y_odo, a_odo, tvel, rvel;
+        float x_odo, y_odo, a_odo;
         float cmd_t, cmd_r;
         bool cmd_dirty, brake_dirty, sonar_dirty;
         bool initialized;
@@ -35,10 +41,12 @@ class RFlexNode {
         void publishTransforms();
         void publishSonar();
 
+        sensor_msgs::PointCloud makeSonarCloud(int numSonar, float** points);
+
     public:
         ros::NodeHandle n;
-        RFlexNode();
-        ~RFlexNode();
+        B21Node();
+        ~B21Node();
         int initialize(const char* port);
         void spinOnce();
 
@@ -49,100 +57,100 @@ class RFlexNode {
         void ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg);
 };
 
-RFlexNode::RFlexNode() {
+B21Node::B21Node() : n ("~") {
     isSonarOn = isBrakeOn = false;
     cmd_dirty = brake_dirty = sonar_dirty = false;
     cmd_t = cmd_r = 0.0;
     updateTimer = 0;
     initialized = false;
-    subs[0] = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1, &RFlexNode::NewCommand, this);
-    subs[1] = n.subscribe<std_msgs::Int64>("cmd_acceleration", 1, &RFlexNode::SetAcceleration, this);
-    subs[2] = n.subscribe<std_msgs::Bool>("cmd_sonar_power", 1, &RFlexNode::ToggleSonarPower, this);
-    subs[3] = n.subscribe<std_msgs::Bool>("cmd_brake_power", 1, &RFlexNode::ToggleBrakePower, this);
-    acceleration = DEFAULT_TRANS_ACCELERATION;
+    subs[0] = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1, &B21Node::NewCommand, this);
+    subs[1] = n.subscribe<std_msgs::Int64>("cmd_acceleration", 1, &B21Node::SetAcceleration, this);
+    subs[2] = n.subscribe<std_msgs::Bool>("cmd_sonar_power", 1, &B21Node::ToggleSonarPower, this);
+    subs[3] = n.subscribe<std_msgs::Bool>("cmd_brake_power", 1, &B21Node::ToggleBrakePower, this);
+    acceleration = 0.7;
 
-    for (int i=0;i<SONAR_RING_COUNT;i++)
-        sonar_pub[i] = n.advertise<sensor_msgs::PointCloud>(SONAR_CLOUD_NAMES[i], 50);
+    base_sonar_pub = n.advertise<sensor_msgs::PointCloud>("sonar_cloud_base", 50);
+    body_sonar_pub = n.advertise<sensor_msgs::PointCloud>("sonar_cloud_body", 50);
     sonar_power_pub = n.advertise<std_msgs::Bool>("sonar_power", 1);
     brake_power_pub = n.advertise<std_msgs::Bool>("brake_power", 1);
     voltage_pub = n.advertise<std_msgs::Float32>("voltage", 1);
     odom_pub = n.advertise<nav_msgs::Odometry>("odom", 50);
 }
 
-int RFlexNode::initialize(const char* port) {
-    rflex = new RFLEX();
-    return rflex->initialize(port);
+int B21Node::initialize(const char* port) {
+    driver = new B21();
+    int ret = driver->initialize(port);
+    if (ret < 0) return ret;
+    driver->setOdometryPeriod (100000);
+    driver->setDigitalIoPeriod(100000);
+    driver->motion_set_defaults();
+    return 0;
 }
 
-RFlexNode::~RFlexNode() {
-    rflex->close_connection();
+B21Node::~B21Node() {
+    driver->motion_set_defaults();
+    driver->setOdometryPeriod(0);
+    driver->setDigitalIoPeriod(0);
+    driver->setSonarPower(false);
+    driver->setIrPower(false);
+
+    driver->close_connection();
 }
 
-void RFlexNode::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
+void B21Node::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
     cmd_t = msg->linear.x;
     cmd_r = msg->angular.z;
 
 }
 
-void RFlexNode::SetAcceleration (const std_msgs::Int64::ConstPtr& msg) {
+void B21Node::SetAcceleration (const std_msgs::Int64::ConstPtr& msg) {
     acceleration = msg->data;
 }
 
-void RFlexNode::ToggleSonarPower(const std_msgs::Bool::ConstPtr& msg) {
+void B21Node::ToggleSonarPower(const std_msgs::Bool::ConstPtr& msg) {
     isSonarOn=msg->data;
     sonar_dirty = true;
 }
 
-void RFlexNode::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
+void B21Node::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
     isBrakeOn = msg->data;
     brake_dirty = true;
 }
 
-void RFlexNode::spinOnce() {
-    rflex->parsePackets();
-
-    rflex->set_velocityF(cmd_t, cmd_r, acceleration);
-    if (sonar_dirty) {
-        rflex->setSonarPower(isSonarOn);
-        sonar_dirty = false;
-
-
-    }
-    std_msgs::Bool smsg;
-    smsg.data = isSonarOn;
-    sonar_power_pub.publish(smsg);
-
-    if (brake_dirty) {
-        rflex->setBrakePower(isBrakeOn);
-        brake_dirty = false;
-    }
-
-    publishOdometry();
-    publishTransforms();
-    // Publish Sonar Messages
-    if (isSonarOn) {
-        publishSonar();
-    }
+void B21Node::spinOnce() {
+    driver->parsePackets();
     if (updateTimer++==100) {
-        int batt, brake;
-
-        rflex->update_system(&batt, &brake);
-        std_msgs::Bool bmsg;
-        bmsg.data = isBrakeOn;
-        brake_power_pub.publish(bmsg);
-        std_msgs::Float32 vmsg;
-        vmsg.data = batt/100.0 + POWER_OFFSET;
-        voltage_pub.publish(vmsg);
+        driver->sendSystemStatusCommand();
         updateTimer = 0;
     }
 
+    driver->setMovement(cmd_t, cmd_r, acceleration);
+    if (sonar_dirty) {
+        driver->setSonarPower(isSonarOn);
+        sonar_dirty = false;
+    }
+    if (brake_dirty) {
+        driver->setBrakePower(isBrakeOn);
+        brake_dirty = false;
+    }
 
+    std_msgs::Bool bmsg;
+    bmsg.data = isSonarOn;
+    sonar_power_pub.publish(bmsg);
+    bmsg.data = driver->getBrakePower();
+    brake_power_pub.publish(bmsg);
+    std_msgs::Float32 vmsg;
+    vmsg.data = driver->getVoltage();
+    voltage_pub.publish(vmsg);
+
+    publishOdometry();
+    publishTransforms();
+    publishSonar();
 }
 
-void RFlexNode::publishOdometry() {
-    float distance, bearing;
-
-    rflex->update_status(&distance, &bearing, &tvel, &rvel);
+void B21Node::publishOdometry() {
+    float distance = driver->getDistance();
+    float bearing = driver->getBearing();
 
     if (!initialized) {
         initialized = true;
@@ -185,9 +193,10 @@ void RFlexNode::publishOdometry() {
 
         //set the velocity
         odom.child_frame_id = "base";
+        float tvel = driver->getTranslationalVelocity();
         odom.twist.twist.linear.x = tvel*cos(a_odo);
         odom.twist.twist.linear.y = tvel*sin(a_odo);
-        odom.twist.twist.angular.z = rvel;
+        odom.twist.twist.angular.z = driver->getRotationalVelocity();
 
         //publish the message
         odom_pub.publish(odom);
@@ -195,7 +204,7 @@ void RFlexNode::publishOdometry() {
     last_distance = distance;
     last_bearing = bearing;
 }
-void RFlexNode::publishTransforms() {
+void B21Node::publishTransforms() {
     geometry_msgs::TransformStamped basebody_trans;
     basebody_trans.header.stamp = ros::Time::now();
     basebody_trans.header.frame_id = "base";
@@ -218,47 +227,22 @@ void RFlexNode::publishTransforms() {
     broadcaster.sendTransform(other_trans);
 }
 
-void RFlexNode::publishSonar() {
-    float** rings = new float*[SONAR_RING_COUNT];
-    int i;
-    for (i=0;i<SONAR_RING_COUNT;i++)
-        rings[i] = new float[SONARS_PER_RING[i]];
+void B21Node::publishSonar() {
+    sensor_msgs::PointCloud cloud;
+    cloud.header.frame_id = "base";
+    driver->getBaseSonarPoints(&cloud);
+    base_sonar_pub.publish(cloud);
 
-    rflex->update_sonar(rings);
-    for (int ringi=0;ringi<SONAR_RING_COUNT;ringi++) {
-        sensor_msgs::PointCloud cloud;
-        cloud.header.stamp = ros::Time::now();
-        cloud.header.frame_id = SONAR_FRAMES[ringi];
-        cloud.set_points_size(SONARS_PER_RING[ringi]);
-
-        cloud.set_channels_size(0);
-        //cloud.channels[0].name = "intensities";
-        //cloud.channels[0].set_values_size(num_points);
-
-        double height = SONAR_RING_HEIGHT[ringi];
-        int c = 0;
-        for (i = 0; i < SONARS_PER_RING[ringi]; ++i) {
-            double angle = SONAR_RING_START_ANGLE[ringi] + SONAR_RING_ANGLE_INC[ringi]*i;
-            angle *= M_PI / 180;
-            double d = SONAR_RING_DIAMETER[ringi] + rings[ringi][i];
-            if (d < SONAR_MAX_RANGE / (float) RANGE_CONVERSION) {
-                cloud.points[c].x = cos(angle)*d;
-                cloud.points[c].y = sin(angle)*d;
-                cloud.points[c].z = height;
-                c++;
-            }
-        }
-        cloud.set_points_size(c);
-
-        sonar_pub[ringi].publish(cloud);
-    }
+    driver->getBodySonarPoints(&cloud);
+    cloud.header.frame_id = "body";
+    body_sonar_pub.publish(cloud);
 }
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "rflex");
-    RFlexNode* node = new RFlexNode();
+    ros::init(argc, argv, "B21");
+    B21Node* node = new B21Node();
     std::string port;
-    node->n.param<std::string>("rflex_port", port, "/dev/ttyUSB0");
+    node->n.param<std::string>("port", port, "/dev/ttyUSB0");
     ROS_INFO("Attempting to connect to %s", port.c_str());
     if (node->initialize(port.c_str())<0) {
         ROS_ERROR("Could not initialize driver!\n");
@@ -267,7 +251,7 @@ int main(int argc, char** argv) {
 
 
     int hz;
-    node->n.param("rflex_rate", hz, 10);
+    node->n.param("rate", hz, 10);
     ros::Rate loop_rate(hz);
 
     while (ros::ok()) {
