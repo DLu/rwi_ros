@@ -249,6 +249,7 @@ int main(int argc, char** argv) {
     ROS_INFO("Attempting to connect to %s", port.c_str());
     if (node->initialize(port.c_str())<0) {
         ROS_ERROR("Could not initialize RFLEX driver!\n");
+	return 0;
     }
     ROS_INFO("Connected!");
 
