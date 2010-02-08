@@ -2,5 +2,8 @@
 	<node name="joy" pkg="joy" type="joy_node" />
 	<node name="joy2ptu" pkg="joy2ptu" type="joy2ptu" />
 	<node name="rflexgui" pkg="rflex_gui" type="gui.py" />
+	<node name="left_image" pkg="image_view" type="image_view" args="image:=/left/image"/>
+	<node name="right_image" pkg="image_view" type="image_view" args="image:=/right/image"/>
+	<node name="rotater" pkg="image_rotater" type="image_rotater.py" />
 </launch>
 
