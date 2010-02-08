@@ -1,8 +1,6 @@
 #include<rflex/rflex_packet.h>
 #include<string.h>
 
-
-
 RFlexPacket::RFlexPacket(unsigned char* buffer, int len) {
     packet = new unsigned char[len];
     memcpy(packet, buffer, len);

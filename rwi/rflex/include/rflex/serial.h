@@ -1,6 +1,12 @@
 #ifndef SERIAL_H
 #define SERIAL_H
 
+/* Serial Port Communication
+ * Writes packets through sendPacket interface
+ * Recieved packets are queued
+ * David Lu!! - 2/2010
+ */
+
 #include <termios.h>
 #include <fcntl.h>
 #include <pthread.h>
@@ -12,17 +18,19 @@ class SerialPort {
     public:
         ~SerialPort();
 
-        int open_connection(const char* port, int speed);
+        int openConnection(const char* port, int speed);
         int setBaudRate(const int speed) const;
         int baudRate() const;
         void sendPacket(RFlexPacket* pkt);
 
-        bool hasPackets() {
+        inline bool hasPackets() {
             return queue.size() >0;
         }
-        int size() {
+        inline int size() {
             return queue.size();
         }
+
+        // Returns a pointer to the packet at the front of the queue
         RFlexPacket* getPacket() {
             RFlexPacket* pkt = queue.front();
             queue.pop();
@@ -30,13 +38,13 @@ class SerialPort {
         }
 
     private:
-        const char* m_port;
-        int m_fd;
-        int m_speed;
-        pthread_t m_read_thread;
-        bool m_found;
-        int m_offset;
-        unsigned char m_read_buffer[BUFFER_SIZE];
+        const char* port;
+        int fd;
+        int speed;
+        pthread_t thread;
+        bool found;
+        int offset;
+        unsigned char readBuffer[BUFFER_SIZE];
 
         static int rate(speed_t baud);
         static speed_t baud(const int speed);
@@ -46,7 +54,7 @@ class SerialPort {
         int readData();
 
         std::queue<RFlexPacket*> queue;
-        pthread_mutex_t m_write_mutex;
+        pthread_mutex_t writeMutex;
 
 };
 

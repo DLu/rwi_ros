@@ -1,4 +1,8 @@
-/*  Player - One Hell of a Robot Server
+/*  RFLEX ROS Node constants
+ *  David Lu!! - 2/2010
+ *  Modified from Player Driver
+ *
+ *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000
  *     Brian Gerkey, Kasper Stoy, Richard Vaughan, & Andrew Howard
  *

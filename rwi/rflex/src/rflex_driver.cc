@@ -1,4 +1,9 @@
-/*  Player - One Hell of a Robot Server
+/*
+ *  RFlex Driver
+ *  David Lu!! - 2/2010
+ *  Modified from Player driver
+ *
+ *  Player - One Hell of a Robot Server
  *  Copyright (C) 2000
  *     Brian Gerkey, Kasper Stoy, Richard Vaughan, & Andrew Howard
  *
@@ -25,6 +30,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <netinet/in.h>
+#include <string.h> // memcpy
 
 //finds the sign of a value
 static long sgn( long val ) {
@@ -69,11 +76,9 @@ void RFLEX::configureSonar(unsigned long echo_delay, unsigned long ping_delay,
 
 void RFLEX::setIrPower( bool on ) {
     unsigned char data[MAX_COMMAND_LENGTH];
-    long v1 = 0,
-              v2 = on?70:0,
-                   v3 = on?10:0,
-                        v4 = on?20:0,
-                             v5 = on?150:0;
+    long v1 = 0, v2 = on?70:0,
+                      v3 = on?10:0, v4 = on?20:0,
+                                         v5 = on?150:0;
     unsigned char v6 = on?2:0;
 
     putInt32( v1, &(data[0]) );
@@ -91,7 +96,7 @@ void RFLEX::setBrakePower( bool on ) {
     serial->sendPacket(&packet);
 }
 
-void RFLEX::motion_set_defaults(  ) {
+void RFLEX::motionSetDefaults(  ) {
     RFlexPacket packet(MOT_PORT, 0, MOT_SET_DEFAULTS, 0, NULL );
     serial->sendPacket(&packet);
 }
@@ -112,33 +117,14 @@ void RFLEX::setOdometryPeriod( long period ) {
     serial->sendPacket(&packet);
 }
 
-void RFLEX::set_velocity( long tvel, long rvel, long acceleration) {
+void RFLEX::setVelocity( long tvel, long rvel, long acceleration) {
     long utvel =labs(tvel);
     long urvel =labs(rvel);
     unsigned char data[MAX_COMMAND_LENGTH];
 
-    // ** workaround for stupid hardware bug, cause unknown, but this works
-    // ** with minimal detriment to control
-    // ** avoids all values with 1b in highest or 3'rd highest order byte
-
-    // 0x1b is part of the packet terminating string
-    // which is most likely what causes the bug
-    /*
-        // ** if 2'nd order byte is 1b, round to nearest 1c, or 1a
-        if ((urvel&0xff00)==0x1b00) {
-            // ** if lowest order byte is>127 round up, otherwise round down
-            urvel=(urvel&0xffff0000)|((urvel&0xff)>127?0x1c00:0x1aff);
-        }
-
-        // ** if highest order byte is 1b, round to 1c, otherwise round to 1a
-        if ((urvel&0xff000000)==0x1b000000) {
-            // ** if 3'rd order byte is>127 round to 1c, otherwise round to 1a
-            urvel=(urvel&0x00ffffff)|(((urvel&0xff0000)>>16)>127?0x1c000000:0x1aff0000);
-        }*/
-
     putInt8( 0,                 &(data[0]) );       /* forward motion */
-    putInt32( utvel,        &(data[1]) );       /* abs trans velocity*/
-    putInt32( acceleration,    &(data[5]) );       /* trans acc */
+    putInt32( utvel,            &(data[1]) );       /* abs trans velocity*/
+    putInt32( acceleration,     &(data[5]) );       /* trans acc */
     putInt32( STD_TRANS_TORQUE, &(data[9]) );       /* trans torque */
     putInt8( sgn(tvel),         &(data[13]) );      /* trans direction */
 
@@ -146,7 +132,7 @@ void RFLEX::set_velocity( long tvel, long rvel, long acceleration) {
     serial->sendPacket(&tpacket);
 
     putInt8( 1,                 &(data[0]) );       /* rotational motion */
-    putInt32( urvel,        &(data[1]) );       /* abs rot velocity  */
+    putInt32( urvel,            &(data[1]) );       /* abs rot velocity  */
     /* 0.275 rad/sec * 10000 */
     putInt32( STD_ROT_ACC,      &(data[5]) );       /* rot acc */
     putInt32( STD_ROT_TORQUE,   &(data[9]) );       /* rot torque */
@@ -173,10 +159,10 @@ void RFLEX::parseMotReport( RFlexPacket* pkt ) {
         axis      = buffer[14];
         if (axis == 0) {
             distance = getInt32(&(buffer[15]));
-            t_vel = getInt32(&(buffer[19]));
+            transVelocity = getInt32(&(buffer[19]));
         } else if (axis == 1) {
             bearing = getInt32(&(buffer[15]));
-            r_vel = getInt32(&(buffer[19]));
+            rotVelocity = getInt32(&(buffer[19]));
         }
         acc       = getInt32(&(buffer[23]));
         trq       = getInt32(&(buffer[27]));
@@ -186,7 +172,7 @@ void RFLEX::parseMotReport( RFlexPacket* pkt ) {
     }
 }
 
-//processes a dio packet from the rflex - dio report includes bump sensors...
+//processes a digital io packet from the rflex
 void RFLEX::parseDioReport( RFlexPacket* pkt ) {
     unsigned long timeStamp;
     unsigned char length, address;
@@ -219,10 +205,10 @@ void RFLEX::parseIrReport( RFlexPacket* pkt ) {
 
     // allocate ir storage if we havent already
     // must be a better place to do this but it works
-    if (num_ir== 0 && IR_POSES_COUNT > 0) {
-        ir_ranges = new unsigned char[IR_POSES_COUNT];
-        if (ir_ranges != NULL)
-            num_ir = IR_POSES_COUNT;
+    if (numIr== 0 && IR_POSES_COUNT > 0) {
+        irRanges = new unsigned char[IR_POSES_COUNT];
+        if (irRanges != NULL)
+            numIr = IR_POSES_COUNT;
         else
             fprintf(stderr,"Error allocating ir range storage in rflex status\n");
     }
@@ -247,12 +233,12 @@ void RFLEX::parseIrReport( RFlexPacket* pkt ) {
 
         // now actually read the ir data
         int ir_data_index = 0;
-        for (int i=0; i < IR_BANK_COUNT && ir_data_index < num_ir; ++i) {
-            for (int j = 0; j < IR_PER_BANK && ir_data_index < num_ir; ++j,++ir_data_index) {
+        for (int i=0; i < IR_BANK_COUNT && ir_data_index < numIr; ++i) {
+            for (int j = 0; j < IR_PER_BANK && ir_data_index < numIr; ++j,++ir_data_index) {
                 // work out the actual offset in teh packet
                 //(current bank + bank offfset) * bank data block size + current ir sensor + constant offset
                 int data_index = (IR_BASE_BANK + i) * 13 + j + 11;
-                ir_ranges[ir_data_index] = buffer[data_index];
+                irRanges[ir_data_index] = buffer[data_index];
             }
         }
 
@@ -286,28 +272,22 @@ void RFLEX::parseSysReport( RFlexPacket* pkt ) {
         timeStamp=getInt32(&(buffer[6]));
         row = buffer[10];
         lcd_length = buffer[11];
-        if (row > lcd_y || lcd_length > lcd_x) {
+        if (row > lcdY || lcd_length > lcdX) {
             fprintf(stderr,"LCD Data Overflow\n");
             break;
         }
 
-        memcpy(&lcd_data[row*lcd_x],&buffer[12],lcd_length);
+        memcpy(&lcdData[row*lcdX],&buffer[12],lcd_length);
 
         // if we got whole lcd dump to file
-        /*			if (row == 239)
-        			{
+        /*			if (row == 239){
         				FILE * fout;
-        				if ((fout = fopen("test.raw","w"))!=0)
-        				{
-        					for (int y=0; y<lcd_y; ++y)
-        					{
-        						for (int x=0; x<lcd_x;++x)
-        						{
-        							unsigned char Temp = lcd_data[y*lcd_x + x];
-        							for (int i = 0; i < 8; ++i)
-        							{
+        				if ((fout = fopen("test.raw","w"))!=0){
+        					for (int y=0; y<lcdY; ++y){
+        						for (int x=0; x<lcdX;++x){
+        							unsigned char Temp = lcdData[y*lcdX + x];
+        							for (int i = 0; i < 8; ++i){
         								if ((Temp >> i) & 0x01)
-
         									fprintf(fout,"%c",0x0);
         								else
         									fprintf(fout,"%c",0xFF);
@@ -399,13 +379,13 @@ void RFLEX::parseJoyReport( RFlexPacket* pkt ) {
 
         if ((buttons & 1) == 1) {
             JoystickWasOn = true;
-            set_velocity((long) (y * JOY_POS_RATIO * ODO_DISTANCE_CONVERSION),
+            setVelocity((long) (y * JOY_POS_RATIO * ODO_DISTANCE_CONVERSION),
                          (long) (x * JOY_ANG_RATIO * ODO_ANGLE_CONVERSION),
                          (long) (DEFAULT_TRANS_ACCELERATION * ODO_DISTANCE_CONVERSION));
             //RFLEX::joy_control = 5;
         } else if (JoystickWasOn) {
             JoystickWasOn = false;
-            set_velocity(0,0,(long) (DEFAULT_TRANS_ACCELERATION * ODO_DISTANCE_CONVERSION));
+            setVelocity(0,0,(long) (DEFAULT_TRANS_ACCELERATION * ODO_DISTANCE_CONVERSION));
             //RFLEX::joy_control = 5;
         }
 
@@ -448,18 +428,18 @@ int RFLEX::parsePacket( RFlexPacket* pkt ) {
     return(1);
 }
 
-int RFLEX::open_connection(const char *device_name) {
+int RFLEX::openConnection(const char *device_name) {
     serial = new SerialPort();
-    return serial->open_connection(device_name, 115200);
+    return serial->openConnection(device_name, 115200);
 }
 
-int RFLEX::close_connection() {
+int RFLEX::closeConnection() {
     delete serial;
     return 0;
 }
 
 int RFLEX::initialize(const char* devname) {
-    int ret0 = open_connection(devname);
+    int ret0 = openConnection(devname);
     if (ret0<0) return ret0;
 
     sonar_ranges = (int*) malloc(SONAR_MAX_COUNT*sizeof(int));
@@ -471,10 +451,10 @@ int RFLEX::initialize(const char* devname) {
     }
 
     // initialise the LCD dump array
-    lcd_data=new unsigned char[320*240/8];
-    if (lcd_data != NULL) {
-        lcd_x=320/8;
-        lcd_y=240;
+    lcdData=new unsigned char[320*240/8];
+    if (lcdData != NULL) {
+        lcdX=320/8;
+        lcdY=240;
     }
 
     // allocate dio

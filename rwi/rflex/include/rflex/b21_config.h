@@ -1,15 +1,17 @@
 #ifndef B21_CONFIG_H
 #define B21_CONFIG_H
 
+// Odometery Constants
+// ===================
 // Arbitrary units per meter
 #define ODO_DISTANCE_CONVERSION 103000
 // Arbitrary units per radian
 #define ODO_ANGLE_CONVERSION 35000
-// Arbitrary units per meter
+
+// Sonar Constants
+// ===============
+// Arbitrary units per meter (for sonar)
 #define RANGE_CONVERSION 1476
-
-#define POWER_OFFSET 1.2
-
 #define SONAR_ECHO_DELAY 30000
 #define SONAR_PING_DELAY 0
 #define SONAR_SET_DELAY  0
@@ -29,23 +31,30 @@ const float SONAR_RING_ANGLE_INC[] = {-15, -15};
 const float SONAR_RING_DIAMETER[] = {.25, .26};
 const float SONAR_RING_HEIGHT[] = {0.055, -0.06};
 
+// Digital IO constants
+// ====================
 #define HEADING_HOME_ADDRESS 0x31
 #define BUMPER_ADDRESS 0x40
 #define BUMPER_COUNT 14
 #define BUMPER_ADDRESS_STYLE 0
 #define BUMPER_BIT_STYLE 1
 #define BUMPER_STYLE 0
+#define HOME_BEARING -967561
 
+// IR Constants
+// ============
 #define IR_POSES_COUNT 24
 #define IR_BASE_BANK 0
 #define IR_BANK_COUNT 6
 #define IR_PER_BANK 4
 
+// Misc Constants
+// ==============
 #define USE_JOYSTICK 0
 #define JOY_POS_RATIO 6
 #define JOY_ANG_RATIO -0.01
+#define POWER_OFFSET 1.2
 
-#define HOME_BEARING -967561
 
 #endif
 

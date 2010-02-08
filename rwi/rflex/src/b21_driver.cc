@@ -1,3 +1,7 @@
+/* B21 Driver Code for ROS
+ * David Lu!! - 2/2010
+ */
+
 #include <rflex/b21_driver.h>
 #include <rflex/b21_config.h>
 #include <math.h>
@@ -11,15 +15,18 @@ float B21::getBearing() {
 }
 
 float B21::getTranslationalVelocity() {
-    return t_vel / (float) ODO_DISTANCE_CONVERSION;
+    return transVelocity / (float) ODO_DISTANCE_CONVERSION;
 }
 
 float B21::getRotationalVelocity() {
-    return r_vel / (float) ODO_ANGLE_CONVERSION;
+    return rotVelocity / (float) ODO_ANGLE_CONVERSION;
 }
 
 float B21::getVoltage() {
-    return voltage/100.0 + POWER_OFFSET;
+    if (voltage==0.0)
+        return 0.0;
+    else
+        return voltage/100.0 + POWER_OFFSET;
 }
 
 int B21::getNumBodySonars() {
@@ -56,9 +63,9 @@ void B21::setSonarPower(bool on) {
 
 void B21::setMovement( float tvel, float rvel,
                        float acceleration ) {
-    set_velocity(tvel * ODO_DISTANCE_CONVERSION,
-                 rvel * ODO_ANGLE_CONVERSION,
-                 acceleration * ODO_DISTANCE_CONVERSION);
+    setVelocity(tvel * ODO_DISTANCE_CONVERSION,
+                rvel * ODO_ANGLE_CONVERSION,
+                acceleration * ODO_DISTANCE_CONVERSION);
 }
 
 

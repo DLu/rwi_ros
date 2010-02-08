@@ -1,3 +1,6 @@
+/* B21 Node for ROS
+ * David Lu!! - 2/2010
+ */
 #include <string>
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
@@ -10,8 +13,6 @@
 #include <nav_msgs/Odometry.h>
 #include <angles/angles.h>
 
-
-
 #define BASE_OFFSET 0.15
 #define BODY_OFFSET 0.485
 #define LASER_OFFSET -0.275
@@ -23,25 +24,24 @@ class B21Node {
         B21* driver;
 
         ros::Subscriber subs[4];
-        float acceleration;
         ros::Publisher base_sonar_pub;
         ros::Publisher body_sonar_pub;
-        bool isSonarOn, isBrakeOn;
         ros::Publisher voltage_pub, brake_power_pub, sonar_power_pub;
         ros::Publisher odom_pub;
         tf::TransformBroadcaster broadcaster;
+
+        bool isSonarOn, isBrakeOn;
+        float acceleration;
         float last_distance, last_bearing;
         float x_odo, y_odo, a_odo;
         float cmd_t, cmd_r;
-        bool cmd_dirty, brake_dirty, sonar_dirty;
+        bool brake_dirty, sonar_dirty;
         bool initialized;
         int updateTimer;
 
         void publishOdometry();
         void publishTransforms();
         void publishSonar();
-
-        sensor_msgs::PointCloud makeSonarCloud(int numSonar, float** points);
 
     public:
         ros::NodeHandle n;
@@ -59,7 +59,7 @@ class B21Node {
 
 B21Node::B21Node() : n ("~") {
     isSonarOn = isBrakeOn = false;
-    cmd_dirty = brake_dirty = sonar_dirty = false;
+    brake_dirty = sonar_dirty = false;
     cmd_t = cmd_r = 0.0;
     updateTimer = 0;
     initialized = false;
@@ -83,35 +83,38 @@ int B21Node::initialize(const char* port) {
     if (ret < 0) return ret;
     driver->setOdometryPeriod (100000);
     driver->setDigitalIoPeriod(100000);
-    driver->motion_set_defaults();
+    driver->motionSetDefaults();
     return 0;
 }
 
 B21Node::~B21Node() {
-    driver->motion_set_defaults();
+    driver->motionSetDefaults();
     driver->setOdometryPeriod(0);
     driver->setDigitalIoPeriod(0);
     driver->setSonarPower(false);
     driver->setIrPower(false);
 
-    driver->close_connection();
+    driver->closeConnection();
 }
 
+// cmd_vel callback
 void B21Node::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
     cmd_t = msg->linear.x;
     cmd_r = msg->angular.z;
-
 }
 
+// cmd_acceleration callback
 void B21Node::SetAcceleration (const std_msgs::Int64::ConstPtr& msg) {
     acceleration = msg->data;
 }
 
+// cmd_sonar_power callback
 void B21Node::ToggleSonarPower(const std_msgs::Bool::ConstPtr& msg) {
     isSonarOn=msg->data;
     sonar_dirty = true;
 }
 
+// cmd_brake_power callback
 void B21Node::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
     isBrakeOn = msg->data;
     brake_dirty = true;
@@ -245,7 +248,7 @@ int main(int argc, char** argv) {
     node->n.param<std::string>("port", port, "/dev/ttyUSB0");
     ROS_INFO("Attempting to connect to %s", port.c_str());
     if (node->initialize(port.c_str())<0) {
-        ROS_ERROR("Could not initialize driver!\n");
+        ROS_ERROR("Could not initialize RFLEX driver!\n");
     }
     ROS_INFO("Connected!");
 

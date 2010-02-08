@@ -3,7 +3,6 @@
 #include <termios.h>
 #include <sys/stat.h>
 #include <iostream>
-#include<string>
 #include <unistd.h>
 using namespace std;
 
@@ -22,18 +21,18 @@ static const int g_speeds[g_num_rates] = {
     4000000
 };
 
-int SerialPort::open_connection(const char* port, const int speed) {
+int SerialPort::openConnection(const char* port, const int speed) {
     // Open the port
-    m_port = port;
-    m_fd = open(port, O_RDWR | O_NONBLOCK);
-    if (m_fd == -1) {
+    this->port = port;
+    fd = open(port, O_RDWR | O_NONBLOCK);
+    if (fd == -1) {
         cerr << "Could not open serial port " << port << endl;
         return -1;
     }
 
     // Get the terminal info
     struct termios info;
-    if (tcgetattr(m_fd, &info) < 0) {
+    if (tcgetattr(fd, &info) < 0) {
         cerr << "Could not get terminal information for " << port << endl;
         return -1;
     }
@@ -50,23 +49,23 @@ int SerialPort::open_connection(const char* port, const int speed) {
     info.c_cc[VMIN] = 0;
 
     // Actually set the controls on the terminal
-    if (tcsetattr(m_fd, TCSAFLUSH, &info) < 0) {
-        close(m_fd);
+    if (tcsetattr(fd, TCSAFLUSH, &info) < 0) {
+        close(fd);
         cerr << "Could not set controls on serial port " << port << endl;
     }
 
     setBaudRate(speed);
 
-    pthread_mutex_init(&m_write_mutex, NULL);
-    pthread_create(&m_read_thread, NULL, SerialPort::readThread, this);
+    pthread_mutex_init(&writeMutex, NULL);
+    pthread_create(&thread, NULL, SerialPort::readThread, this);
 
     return 0;
 }
 
 
 SerialPort::~SerialPort() {
-    if (m_fd != -1)
-        close(m_fd);
+    if (fd != -1)
+        close(fd);
 }
 
 void* SerialPort::readThread(void *ptr) {
@@ -76,13 +75,13 @@ void* SerialPort::readThread(void *ptr) {
         // Set up the read set to include the serial port
         fd_set read_set;
         FD_ZERO(&read_set);
-        FD_SET(serial->m_fd, &read_set);
+        FD_SET(serial->fd, &read_set);
 
         // Is there any new data to be read from the port?
-        if (select(serial->m_fd + 1, &read_set, NULL, NULL, NULL) >= 0 && FD_ISSET(serial->m_fd, &read_set)) {
+        if (select(serial->fd + 1, &read_set, NULL, NULL, NULL) >= 0 && FD_ISSET(serial->fd, &read_set)) {
             int read_size = serial->readData();
             if (read_size > 0) {
-                RFlexPacket* pkt = new RFlexPacket(serial->m_read_buffer, read_size);
+                RFlexPacket* pkt = new RFlexPacket(serial->readBuffer, read_size);
                 serial->queue.push(pkt);
             }
         }
@@ -91,55 +90,55 @@ void* SerialPort::readThread(void *ptr) {
 
 int SerialPort::readData() {
     // Read one byte of of the packet.  No need to check for errors, since this will be called repeatedly.
-    if (read(m_fd, m_read_buffer + m_offset, 1) != 1)
+    if (read(fd, readBuffer + offset, 1) != 1)
         return 0;
 
     // Have we started a packet yet?
-    if (!m_found) {
+    if (!found) {
         // If the first character isn't an ESC, the packet is invalid.  Reset the offset and return.  This
         // will eat badly-formed packets.
-        if (m_read_buffer[0] != ESC) {
-            m_offset = 0;
+        if (readBuffer[0] != ESC) {
+            offset = 0;
             return 0;
         }
-        if (m_offset == 0) {
-            m_offset = 1;
+        if (offset == 0) {
+            offset = 1;
             return 0;
         }
 
         // We have to wait for a STX to show up before it's a valid packet.  If we see an ESC, then we just
         // keep looking for an STX.  If we see something else, give up and start looking for a new packet.
-        if (m_read_buffer[1] == STX) {
-            m_found = true;
-            m_offset = 2;
+        if (readBuffer[1] == STX) {
+            found = true;
+            offset = 2;
             return 0;
-        } else if (m_read_buffer[1] == ESC) {
-            m_offset = 1;
+        } else if (readBuffer[1] == ESC) {
+            offset = 1;
             return 0;
         } else {
-            m_offset = 0;
+            offset = 0;
             return 0;
         }
     } else {
         // If the previous character was an ESC,
-        if (m_read_buffer[m_offset - 1] == ESC) {
-            switch (m_read_buffer[m_offset]) {
+        if (readBuffer[offset - 1] == ESC) {
+            switch (readBuffer[offset]) {
             case NUL:  // Skip over NULs
-                read(m_fd, m_read_buffer + m_offset, 1);  // Should we be checking the return code here?
-                ++m_offset;
+                read(fd, readBuffer + offset, 1);  // Should we be checking the return code here?
+                ++offset;
                 return 0;
             case SOH:  // Ignore SOHs by deleting them
-                --m_offset;
+                --offset;
                 return 0;
             case ETX: // ETX ends the packet, so return the length
-                const int retval = m_offset + 1;
-                m_found = false;
-                m_offset = 0;
+                const int retval = offset + 1;
+                found = false;
+                offset = 0;
                 return retval;
             };
         } else {
             // Just increment the counter
-            ++m_offset;
+            ++offset;
 
             return 0;
         }
@@ -156,24 +155,24 @@ int SerialPort::setBaudRate(const int speed) const {
 
     // Now, get the terminal information and set the speed
     struct termios info;
-    if (tcgetattr(m_fd, &info) < 0) {
-        cerr << "Could not get terminal information for " << m_port << endl;
+    if (tcgetattr(fd, &info) < 0) {
+        cerr << "Could not get terminal information for " << port << endl;
         return baudRate();
     }
 
     if (cfsetospeed(&info, baud_rate) < 0) {
-        cerr << "Could not set the output speed for " << m_port << endl;
+        cerr << "Could not set the output speed for " << port << endl;
         return baudRate();
     }
 
     if (cfsetispeed(&info, baud_rate) < 0) {
-        cerr << "Could not set the input speed for " << m_port << endl;
+        cerr << "Could not set the input speed for " << port << endl;
         return baudRate();
     }
 
-    if (tcsetattr(m_fd, TCSAFLUSH, &info) < 0) {
-        close(m_fd);
-        cerr << "Could not set controls on serial port " << m_port << endl;
+    if (tcsetattr(fd, TCSAFLUSH, &info) < 0) {
+        close(fd);
+        cerr << "Could not set controls on serial port " << port << endl;
     }
 
     return rate(baud_rate);
@@ -183,8 +182,8 @@ int SerialPort::setBaudRate(const int speed) const {
 int SerialPort::baudRate() const {
     // Open the terminal.  We actually need to check the read device in case someone else has sneakily set the speed.
     struct termios info;
-    if (tcgetattr(m_fd, &info) < 0) {
-        cerr << "Could not get terminal information for " << m_port << endl;
+    if (tcgetattr(fd, &info) < 0) {
+        cerr << "Could not get terminal information for " << port << endl;
         return 0;
     }
 
@@ -194,7 +193,7 @@ int SerialPort::baudRate() const {
 
     // Ensure that they are the same
     if (ospeed != ispeed) {
-        cerr << "Input and output speeds are different for " << m_port << "\n  input: " << rate(ispeed) << "\n  output: " << rate(ospeed) << endl;
+        cerr << "Input and output speeds are different for " << port << "\n  input: " << rate(ispeed) << "\n  output: " << rate(ospeed) << endl;
         return 0;
     }
 
@@ -222,21 +221,21 @@ speed_t SerialPort::baud(const int speed) {
 }
 
 void SerialPort::sendPacket(RFlexPacket* pkt) {
-    pthread_mutex_lock(&m_write_mutex);
+    pthread_mutex_lock(&writeMutex);
     int length = pkt->length();
     unsigned char* data = pkt->data();
     int bytes_written = 0;
 
     while (bytes_written < length) {
-        int n = write(m_fd, data + bytes_written, length - bytes_written);
+        int n = write(fd, data + bytes_written, length - bytes_written);
         if (n < 0) {
-            pthread_mutex_unlock(&m_write_mutex);
+            pthread_mutex_unlock(&writeMutex);
             return;
         } else
             bytes_written += n;
 
         usleep(1000);
     }
-    pthread_mutex_unlock(&m_write_mutex);
+    pthread_mutex_unlock(&writeMutex);
 }
 
