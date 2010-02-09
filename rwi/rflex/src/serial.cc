@@ -1,3 +1,25 @@
+/*
+ *  Serial Port Communication for the RFLEX Driver - By David Lu!! 2/2010
+ *
+ *  Writes packets through sendPacket interface
+ *  Recieved packets are queued
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ */
+
 #include <rflex/serial.h>
 #include <rflex/rflex_packet.h>
 #include <termios.h>
@@ -20,6 +42,15 @@ static const int g_speeds[g_num_rates] = {
     500000, 576000, 921600, 1000000, 1152000, 1500000, 2000000, 2500000, 3000000, 3500000,
     4000000
 };
+
+SerialPort::SerialPort() {
+    // empty constructor
+}
+
+SerialPort::~SerialPort() {
+    if (fd != -1)
+        close(fd);
+}
 
 int SerialPort::openConnection(const char* port, const int speed) {
     // Open the port
@@ -63,10 +94,6 @@ int SerialPort::openConnection(const char* port, const int speed) {
 }
 
 
-SerialPort::~SerialPort() {
-    if (fd != -1)
-        close(fd);
-}
 
 void* SerialPort::readThread(void *ptr) {
     SerialPort *serial = static_cast<SerialPort *>(ptr);

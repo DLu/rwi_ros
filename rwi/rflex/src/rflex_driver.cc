@@ -24,7 +24,6 @@
  *
  */
 
-#include <rflex/rflex_info.h>
 #include <rflex/rflex_driver.h>
 #include <rflex/rflex_packet.h>
 
@@ -35,7 +34,10 @@
 
 //finds the sign of a value
 static long sgn( long val ) {
-    return (val<0)?0:1;
+    if (val < 0)
+        return 0;
+    else
+        return 1;
 }
 
 static unsigned int getInt16( unsigned char *bytes ) {
@@ -62,8 +64,28 @@ static void putInt32( unsigned long l, unsigned char *bytes ) {
     memcpy( bytes, &conv, 4 );
 }
 
-void RFLEX::configureSonar(unsigned long echo_delay, unsigned long ping_delay,
-                           unsigned long set_delay, unsigned val) {
+RFLEX::RFLEX() {
+    // initialise the LCD dump array
+    lcdData=new unsigned char[320*240/8];
+    if (lcdData != NULL) {
+        lcdX=320/8;
+        lcdY=240;
+    }
+
+    // allocate dio
+#warning allocate dio
+}
+
+int RFLEX::initialize(const char* device_name) {
+    return serial.openConnection(device_name, 115200);
+}
+
+RFLEX::~RFLEX() {
+    // empty destructor
+}
+
+void RFLEX::configureSonar(const unsigned long echo_delay, const unsigned long ping_delay,
+                           const unsigned long set_delay, const unsigned long val) {
 
     unsigned char data[MAX_COMMAND_LENGTH];
     putInt32( echo_delay, &(data[0]) );
@@ -71,15 +93,24 @@ void RFLEX::configureSonar(unsigned long echo_delay, unsigned long ping_delay,
     putInt32( set_delay , &(data[8]) );
     putInt8(  val, &(data[12]) );
     RFlexPacket packet(SONAR_PORT, 4, SONAR_RUN, 13, data );
-    serial->sendPacket(&packet);
+    serial.sendPacket(&packet);
 }
 
-void RFLEX::setIrPower( bool on ) {
+void RFLEX::setIrPower( const bool on ) {
     unsigned char data[MAX_COMMAND_LENGTH];
-    long v1 = 0, v2 = on?70:0,
-                      v3 = on?10:0, v4 = on?20:0,
-                                         v5 = on?150:0;
-    unsigned char v6 = on?2:0;
+    long v1, v2, v3, v4, v5;
+    unsigned char v6;
+    if (on) {
+        v1 = 0;
+        v2 = 70;
+        v3 = 10;
+        v4 = 20;
+        v5 = 150;
+        v6 = 2;
+    } else {
+        v1 = v2 = v3 = v4 = v5 = 0;
+        v6 = 0;
+    }
 
     putInt32( v1, &(data[0]) );
     putInt32( v2, &(data[4]) );
@@ -88,36 +119,47 @@ void RFLEX::setIrPower( bool on ) {
     putInt32( v5, &(data[16]) );
     putInt8(  v6, &(data[20]) );
     RFlexPacket packet(IR_PORT, 0, IR_RUN, 21, data );
-    serial->sendPacket(&packet);
+    serial.sendPacket(&packet);
 }
 
-void RFLEX::setBrakePower( bool on ) {
-    RFlexPacket packet(MOT_PORT, 0, on?MOT_BRAKE_SET:MOT_BRAKE_RELEASE, 0, NULL );
-    serial->sendPacket(&packet);
+void RFLEX::setBrakePower( const bool on ) {
+    int brake;
+    if (on)
+        brake = MOT_BRAKE_SET;
+    else
+        brake = MOT_BRAKE_RELEASE;
+
+    RFlexPacket packet(MOT_PORT, 0, brake, 0, NULL );
+    serial.sendPacket(&packet);
 }
 
 void RFLEX::motionSetDefaults(  ) {
     RFlexPacket packet(MOT_PORT, 0, MOT_SET_DEFAULTS, 0, NULL );
-    serial->sendPacket(&packet);
+    serial.sendPacket(&packet);
 }
 
-void RFLEX::setDigitalIoPeriod( long period ) {
+void RFLEX::setDigitalIoPeriod( const long period ) {
     unsigned char data[MAX_COMMAND_LENGTH];
     putInt32( period, &(data[0]) );
     RFlexPacket packet(DIO_PORT, 0, DIO_REPORTS_REQ, 4, data );
-    serial->sendPacket(&packet);
+    serial.sendPacket(&packet);
 }
 
-void RFLEX::setOdometryPeriod( long period ) {
+void RFLEX::setOdometryPeriod( const long period ) {
     unsigned char data[MAX_COMMAND_LENGTH];
-    long mask = period==0?0:3;
+    long mask;
+    if (period==0)
+        mask = 0;
+    else
+        mask = 3;
+
     putInt32( period, &(data[0]) );         /* period in ms */
     putInt32( mask, &(data[4]) );           /* mask */
     RFlexPacket packet(MOT_PORT, 0, MOT_SYSTEM_REPORT_REQ, 8, data );
-    serial->sendPacket(&packet);
+    serial.sendPacket(&packet);
 }
 
-void RFLEX::setVelocity( long tvel, long rvel, long acceleration) {
+void RFLEX::setVelocity( const long tvel, const long rvel, const long acceleration) {
     long utvel =labs(tvel);
     long urvel =labs(rvel);
     unsigned char data[MAX_COMMAND_LENGTH];
@@ -129,7 +171,7 @@ void RFLEX::setVelocity( long tvel, long rvel, long acceleration) {
     putInt8( sgn(tvel),         &(data[13]) );      /* trans direction */
 
     RFlexPacket tpacket(MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
-    serial->sendPacket(&tpacket);
+    serial.sendPacket(&tpacket);
 
     putInt8( 1,                 &(data[0]) );       /* rotational motion */
     putInt32( urvel,            &(data[1]) );       /* abs rot velocity  */
@@ -139,12 +181,12 @@ void RFLEX::setVelocity( long tvel, long rvel, long acceleration) {
     putInt8( sgn(rvel),         &(data[13]) );      /* rot direction */
 
     RFlexPacket rpacket(MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
-    serial->sendPacket(&rpacket);
+    serial.sendPacket(&rpacket);
 }
 
 void RFLEX::sendSystemStatusCommand() {
     RFlexPacket packet(SYS_PORT, 0, SYS_STATUS, 0, NULL );
-    serial->sendPacket(&packet);
+    serial.sendPacket(&packet);
 }
 
 void RFLEX::parseMotReport( RFlexPacket* pkt ) {
@@ -322,7 +364,6 @@ void RFLEX::parseSysReport( RFlexPacket* pkt ) {
 //processes a sonar packet from the rflex
 void RFLEX::parseSonarReport( RFlexPacket* pkt ) {
     unsigned char* buffer = pkt->data();
-    int x,smallest;
     int retval, timeStamp, count;
     unsigned char dlen = buffer[5];
 
@@ -333,22 +374,7 @@ void RFLEX::parseSonarReport( RFlexPacket* pkt ) {
         count = 0;
         while ((8+count*3<dlen) && (count<256) && (count < SONAR_MAX_COUNT)) {
             unsigned int sid = buffer[14+count*3];
-            int value = getInt16( &(buffer[14+count*3+1]) );
-
-            //shift buffer
-            for (x=0;x<SONAR_AGE-1;x++)
-                sonar_history[x+1][sid] = sonar_history[x][sid];
-
-            //add value to buffer
-            sonar_history[0][sid] = value;
-
-            //find the smallest
-            smallest = value;
-            for (x=1;x<SONAR_AGE;x++)
-                if (smallest>sonar_history[x][sid] && sonar_history[x]>=0)
-                    smallest=sonar_history[x][sid];
-            //set the smallest in last sonar_age as our value
-            sonar_ranges[sid] = smallest;
+            sonar_ranges[sid] = getInt16( &(buffer[14+count*3+1]) );
             count++;
         }
         break;
@@ -428,44 +454,9 @@ int RFLEX::parsePacket( RFlexPacket* pkt ) {
     return(1);
 }
 
-int RFLEX::openConnection(const char *device_name) {
-    serial = new SerialPort();
-    return serial->openConnection(device_name, 115200);
-}
-
-int RFLEX::closeConnection() {
-    delete serial;
-    return 0;
-}
-
-int RFLEX::initialize(const char* devname) {
-    int ret0 = openConnection(devname);
-    if (ret0<0) return ret0;
-
-    sonar_ranges = (int*) malloc(SONAR_MAX_COUNT*sizeof(int));
-    sonar_history = (int**) malloc(SONAR_AGE*sizeof(int*));
-    for (int j=0;j<SONAR_AGE;j++) {
-        sonar_history[j] = (int*) malloc(SONAR_MAX_COUNT*sizeof(int));
-        for (int i=0;i<SONAR_MAX_COUNT;i++)
-            sonar_history[j][i] = -1;
-    }
-
-    // initialise the LCD dump array
-    lcdData=new unsigned char[320*240/8];
-    if (lcdData != NULL) {
-        lcdX=320/8;
-        lcdY=240;
-    }
-
-    // allocate dio
-#warning allocate dio
-    return 0;
-}
-
-
 void RFLEX::parsePackets() {
-    while (serial->hasPackets()) {
-        RFlexPacket* pkt = serial->getPacket();
+    while (serial.hasPackets()) {
+        RFlexPacket* pkt = serial.getPacket();
         parsePacket(pkt);
         delete pkt;
     }

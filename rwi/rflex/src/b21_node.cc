@@ -1,12 +1,26 @@
-/* B21 Node for ROS
- * David Lu!! - 2/2010
+/*
+ *  B21 Node for ROS - By David Lu!! 2/2010
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
  */
 #include <string>
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
 #include <rflex/b21_driver.h>
 #include <std_msgs/Bool.h>
-#include <std_msgs/Int64.h>
 #include <std_msgs/Float32.h>
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/PointCloud.h>
@@ -21,20 +35,21 @@
 
 class B21Node {
     private:
-        B21* driver;
+        B21 driver;
 
         ros::Subscriber subs[4];
         ros::Publisher base_sonar_pub;
         ros::Publisher body_sonar_pub;
         ros::Publisher voltage_pub, brake_power_pub, sonar_power_pub;
         ros::Publisher odom_pub;
+        ros::Publisher plugged_pub;
         tf::TransformBroadcaster broadcaster;
 
         bool isSonarOn, isBrakeOn;
         float acceleration;
         float last_distance, last_bearing;
         float x_odo, y_odo, a_odo;
-        float cmd_t, cmd_r;
+        float cmdTranslation, cmdRotation;
         bool brake_dirty, sonar_dirty;
         bool initialized;
         int updateTimer;
@@ -51,20 +66,20 @@ class B21Node {
         void spinOnce();
 
         // Message Listeners
-        void NewCommand(const geometry_msgs::Twist::ConstPtr& msg);
-        void SetAcceleration (const std_msgs::Int64::ConstPtr& msg);
-        void ToggleSonarPower(const std_msgs::Bool::ConstPtr& msg);
-        void ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg);
+        void NewCommand      (const geometry_msgs::Twist::ConstPtr& msg);
+        void SetAcceleration (const std_msgs::Float32   ::ConstPtr& msg);
+        void ToggleSonarPower(const std_msgs::Bool      ::ConstPtr& msg);
+        void ToggleBrakePower(const std_msgs::Bool      ::ConstPtr& msg);
 };
 
 B21Node::B21Node() : n ("~") {
     isSonarOn = isBrakeOn = false;
     brake_dirty = sonar_dirty = false;
-    cmd_t = cmd_r = 0.0;
+    cmdTranslation = cmdRotation = 0.0;
     updateTimer = 0;
     initialized = false;
-    subs[0] = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1, &B21Node::NewCommand, this);
-    subs[1] = n.subscribe<std_msgs::Int64>("cmd_acceleration", 1, &B21Node::SetAcceleration, this);
+    subs[0] = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1,   &B21Node::NewCommand, this);
+    subs[1] = n.subscribe<std_msgs::Float32>("cmd_accel", 1,     &B21Node::SetAcceleration, this);
     subs[2] = n.subscribe<std_msgs::Bool>("cmd_sonar_power", 1, &B21Node::ToggleSonarPower, this);
     subs[3] = n.subscribe<std_msgs::Bool>("cmd_brake_power", 1, &B21Node::ToggleBrakePower, this);
     acceleration = 0.7;
@@ -75,36 +90,36 @@ B21Node::B21Node() : n ("~") {
     brake_power_pub = n.advertise<std_msgs::Bool>("brake_power", 1);
     voltage_pub = n.advertise<std_msgs::Float32>("voltage", 1);
     odom_pub = n.advertise<nav_msgs::Odometry>("odom", 50);
+    plugged_pub = n.advertise<std_msgs::Bool>("plugged_in", 1);
 }
 
 int B21Node::initialize(const char* port) {
-    driver = new B21();
-    int ret = driver->initialize(port);
-    if (ret < 0) return ret;
-    driver->setOdometryPeriod (100000);
-    driver->setDigitalIoPeriod(100000);
-    driver->motionSetDefaults();
+    int ret = driver.initialize(port);
+    if (ret < 0)
+        return ret;
+
+    driver.setOdometryPeriod (100000);
+    driver.setDigitalIoPeriod(100000);
+    driver.motionSetDefaults();
     return 0;
 }
 
 B21Node::~B21Node() {
-    driver->motionSetDefaults();
-    driver->setOdometryPeriod(0);
-    driver->setDigitalIoPeriod(0);
-    driver->setSonarPower(false);
-    driver->setIrPower(false);
-
-    driver->closeConnection();
+    driver.motionSetDefaults();
+    driver.setOdometryPeriod(0);
+    driver.setDigitalIoPeriod(0);
+    driver.setSonarPower(false);
+    driver.setIrPower(false);
 }
 
 // cmd_vel callback
 void B21Node::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
-    cmd_t = msg->linear.x;
-    cmd_r = msg->angular.z;
+    cmdTranslation = msg->linear.x;
+    cmdRotation = msg->angular.z;
 }
 
 // cmd_acceleration callback
-void B21Node::SetAcceleration (const std_msgs::Int64::ConstPtr& msg) {
+void B21Node::SetAcceleration (const std_msgs::Float32::ConstPtr& msg) {
     acceleration = msg->data;
 }
 
@@ -121,29 +136,34 @@ void B21Node::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
 }
 
 void B21Node::spinOnce() {
-    driver->parsePackets();
-    if (updateTimer++==100) {
-        driver->sendSystemStatusCommand();
+    driver.parsePackets();
+
+    // Sending the status command too often overwhelms the driver
+    if (updateTimer==100) {
+        driver.sendSystemStatusCommand();
         updateTimer = 0;
     }
+    updateTimer++;
 
-    driver->setMovement(cmd_t, cmd_r, acceleration);
+    driver.setMovement(cmdTranslation, cmdRotation, acceleration);
     if (sonar_dirty) {
-        driver->setSonarPower(isSonarOn);
+        driver.setSonarPower(isSonarOn);
         sonar_dirty = false;
     }
     if (brake_dirty) {
-        driver->setBrakePower(isBrakeOn);
+        driver.setBrakePower(isBrakeOn);
         brake_dirty = false;
     }
 
     std_msgs::Bool bmsg;
     bmsg.data = isSonarOn;
     sonar_power_pub.publish(bmsg);
-    bmsg.data = driver->getBrakePower();
+    bmsg.data = driver.getBrakePower();
     brake_power_pub.publish(bmsg);
+    bmsg.data = driver.isPluggedIn();
+    plugged_pub.publish(bmsg);
     std_msgs::Float32 vmsg;
-    vmsg.data = driver->getVoltage();
+    vmsg.data = driver.getVoltage();
     voltage_pub.publish(vmsg);
 
     publishOdometry();
@@ -152,8 +172,8 @@ void B21Node::spinOnce() {
 }
 
 void B21Node::publishOdometry() {
-    float distance = driver->getDistance();
-    float bearing = driver->getBearing();
+    float distance = driver.getDistance();
+    float bearing = driver.getBearing();
 
     if (!initialized) {
         initialized = true;
@@ -196,10 +216,10 @@ void B21Node::publishOdometry() {
 
         //set the velocity
         odom.child_frame_id = "base";
-        float tvel = driver->getTranslationalVelocity();
+        float tvel = driver.getTranslationalVelocity();
         odom.twist.twist.linear.x = tvel*cos(a_odo);
         odom.twist.twist.linear.y = tvel*sin(a_odo);
-        odom.twist.twist.angular.z = driver->getRotationalVelocity();
+        odom.twist.twist.angular.z = driver.getRotationalVelocity();
 
         //publish the message
         odom_pub.publish(odom);
@@ -233,21 +253,21 @@ void B21Node::publishTransforms() {
 void B21Node::publishSonar() {
     sensor_msgs::PointCloud cloud;
     cloud.header.frame_id = "base";
-    driver->getBaseSonarPoints(&cloud);
+    driver.getBaseSonarPoints(&cloud);
     base_sonar_pub.publish(cloud);
 
-    driver->getBodySonarPoints(&cloud);
+    driver.getBodySonarPoints(&cloud);
     cloud.header.frame_id = "body";
     body_sonar_pub.publish(cloud);
 }
 
 int main(int argc, char** argv) {
     ros::init(argc, argv, "B21");
-    B21Node* node = new B21Node();
+    B21Node node;
     std::string port;
-    node->n.param<std::string>("port", port, "/dev/ttyUSB0");
+    node.n.param<std::string>("port", port, "/dev/ttyUSB0");
     ROS_INFO("Attempting to connect to %s", port.c_str());
-    if (node->initialize(port.c_str())<0) {
+    if (node.initialize(port.c_str())<0) {
         ROS_ERROR("Could not initialize RFLEX driver!\n");
 	return 0;
     }
@@ -255,11 +275,11 @@ int main(int argc, char** argv) {
 
 
     int hz;
-    node->n.param("rate", hz, 10);
+    node.n.param("rate", hz, 10);
     ros::Rate loop_rate(hz);
 
     while (ros::ok()) {
-        node->spinOnce();
+        node.spinOnce();
         // Process a round of subscription messages
         ros::spinOnce();
         // This will adjust as needed per iteration

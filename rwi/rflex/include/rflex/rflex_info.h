@@ -93,6 +93,5 @@
 #define BUMPER_ADDRESS 0x40
 
 #define SONAR_MAX_COUNT 224
-#define SONAR_AGE 1
 
 #endif

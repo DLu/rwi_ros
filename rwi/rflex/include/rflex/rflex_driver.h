@@ -27,22 +27,46 @@
 #define RFLEX_DRIVER_H
 
 #include <rflex/serial.h>
+#include <rflex/rflex_info.h>
 
 class RFLEX {
-    protected:
-        int openConnection(const char *);
+    public:
+        RFLEX();
+        virtual ~RFLEX();
 
-        int  parsePacket(RFlexPacket*);
-        void parseMotReport(RFlexPacket*);
-        void parseDioReport(RFlexPacket*);
-        void parseIrReport(RFlexPacket*);
-        void parseSysReport(RFlexPacket*);
-        void parseSonarReport(RFlexPacket*);
-        void parseJoyReport(RFlexPacket*);
+        int initialize(const char* devname);
+
+        void configureSonar(const unsigned long echoDelay, const unsigned long pingDelay,
+                            const unsigned long setDelay, const unsigned long val);
+        void setIrPower(const bool power);
+        void setBrakePower(const bool power);
+        void setDigitalIoPeriod(const long period);
+        void setOdometryPeriod(const long period);
+        void motionSetDefaults();
+
+        bool getBrakePower() const {
+            return brake;
+        }
+        int  getIrCount() const {
+            return numIr;
+        }
+
+        void setVelocity(const long transVelocity, const long rotVelocity,
+                         const long acceleration);
+        void sendSystemStatusCommand();
+        void parsePackets();
+
+    protected:
+        int  parsePacket(RFlexPacket* pkt);
+        void parseMotReport(RFlexPacket* pkt);
+        void parseDioReport(RFlexPacket* pkt);
+        void parseIrReport(RFlexPacket* pkt);
+        void parseSysReport(RFlexPacket* pkt);
+        void parseSonarReport(RFlexPacket* pkt);
+        void parseJoyReport(RFlexPacket* pkt);
 
         int distance, bearing, transVelocity, rotVelocity;
-        int *sonar_ranges;
-        int**sonar_history;
+        int sonar_ranges[SONAR_MAX_COUNT];
         long voltage;
         bool brake;
 
@@ -54,31 +78,11 @@ class RFLEX {
         unsigned char * irRanges;
         int home_bearing_found;
 
-        SerialPort* serial;
+        SerialPort serial;
 
-    public:
-        int initialize(const char* devname);
-        int closeConnection();
-
-        void configureSonar(unsigned long echoDelay, unsigned long pingDelay,
-                            unsigned long setDelay, unsigned val);
-        void setIrPower(bool);
-        void setBrakePower(bool);
-        void setDigitalIoPeriod(long period);
-        void setOdometryPeriod(long period);
-        void motionSetDefaults();
-
-        bool getBrakePower() {
-            return brake;
-        }
-        int  getIrCount() {
-            return numIr;
-        }
-
-        void setVelocity(long transVelocity, long rotVelocity,
-                         long acceleration);
-        void sendSystemStatusCommand();
-        void parsePackets();
-
+    private:
+        // Not allowed to use these
+        RFLEX(const RFLEX &rflex);
+        RFLEX &operator=(const RFLEX &rflex);
 };
 #endif
