@@ -98,7 +98,7 @@ int SerialPort::openConnection(const char* port, const int speed) {
 void* SerialPort::readThread(void *ptr) {
     SerialPort *serial = static_cast<SerialPort *>(ptr);
 
-    while (true) {
+    while ( serial->fd >= 0) {
         // Set up the read set to include the serial port
         fd_set read_set;
         FD_ZERO(&read_set);
