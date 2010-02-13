@@ -26,8 +26,8 @@
 #ifndef RFLEX_DRIVER_H
 #define RFLEX_DRIVER_H
 
-#include <rflex/serial.h>
 #include <rflex/rflex_info.h>
+#include <pthread.h>
 
 class RFLEX {
     public:
@@ -54,17 +54,10 @@ class RFLEX {
         void setVelocity(const long transVelocity, const long rotVelocity,
                          const long acceleration);
         void sendSystemStatusCommand();
-        void parsePackets();
+
+        void parsePacket(const unsigned char* buffer);
 
     protected:
-        int  parsePacket(RFlexPacket* pkt);
-        void parseMotReport(RFlexPacket* pkt);
-        void parseDioReport(RFlexPacket* pkt);
-        void parseIrReport(RFlexPacket* pkt);
-        void parseSysReport(RFlexPacket* pkt);
-        void parseSonarReport(RFlexPacket* pkt);
-        void parseJoyReport(RFlexPacket* pkt);
-
         int distance, bearing, transVelocity, rotVelocity;
         int sonar_ranges[SONAR_MAX_COUNT];
         long voltage;
@@ -78,9 +71,32 @@ class RFLEX {
         unsigned char * irRanges;
         int home_bearing_found;
 
-        SerialPort serial;
 
     private:
+        void parseMotReport(const unsigned char* buffer);
+        void parseDioReport(const unsigned char* buffer);
+        void parseIrReport(const unsigned char* buffer);
+        void parseSysReport(const unsigned char* buffer);
+        void parseSonarReport(const unsigned char* buffer);
+        void parseJoyReport(const unsigned char* buffer);
+
+        // IO Stuff
+        int fd;
+        pthread_t thread;
+        bool found;
+        int offset;
+        unsigned char readBuffer[BUFFER_SIZE];
+        unsigned char writeBuffer[BUFFER_SIZE];
+        pthread_mutex_t writeMutex;
+
+        static void *readThread(void *ptr);
+        bool sendCommand(const unsigned char port, const unsigned char id, const unsigned char opcode, const int length, unsigned char* data);
+
+        void readPacket();
+        int readData();
+        bool writePacket(const int length) const;
+        unsigned char computeCRC(const unsigned char *buffer, const int n);
+
         // Not allowed to use these
         RFLEX(const RFLEX &rflex);
         RFLEX &operator=(const RFLEX &rflex);

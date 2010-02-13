@@ -25,12 +25,15 @@
  */
 
 #include <rflex/rflex_driver.h>
-#include <rflex/rflex_packet.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <netinet/in.h>
+#include <termios.h>
+#include <sys/stat.h>
+#include <iostream>
+#include <unistd.h>
 #include <string.h> // memcpy
+#include <fcntl.h>
 
 //finds the sign of a value
 static long sgn( long val ) {
@@ -40,14 +43,14 @@ static long sgn( long val ) {
         return 1;
 }
 
-static unsigned int getInt16( unsigned char *bytes ) {
+static unsigned int getInt16( const unsigned char *bytes ) {
     unsigned int i;
     memcpy( &i, bytes, 2 );
     return(htons(i));
 }
 
 
-static unsigned long getInt32( unsigned char *bytes ) {
+static unsigned long getInt32( const unsigned char *bytes ) {
     unsigned long i;
     memcpy( &i, bytes, 4 );
     return(htonl(i));
@@ -65,6 +68,10 @@ static void putInt32( unsigned long l, unsigned char *bytes ) {
 }
 
 RFLEX::RFLEX() {
+    distance = bearing = transVelocity = rotVelocity = 0;
+    voltage = 0;
+    brake = true;
+
     // initialise the LCD dump array
     lcdData=new unsigned char[320*240/8];
     if (lcdData != NULL) {
@@ -77,7 +84,51 @@ RFLEX::RFLEX() {
 }
 
 int RFLEX::initialize(const char* device_name) {
-    return serial.openConnection(device_name, 115200);
+    // Open the port
+    fd = open(device_name, O_RDWR | O_NONBLOCK);
+    if (fd == -1) {
+        fprintf(stderr,"Could not open serial port %s\n", device_name );
+        return -1;
+    }
+
+    // Get the terminal info
+    struct termios info;
+    if (tcgetattr(fd, &info) < 0) {
+        fprintf(stderr,"Could not get terminal information for %s\n", device_name );
+        return -1;
+    }
+
+    // Turn off echo, canonical mode, extended processing, signals, break signal, cr to newline, parity off, 8 bit strip, flow control,
+    // size, parity bit, and output processing
+    info.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG | BRKINT | ICRNL | INPCK | ISTRIP | IXON | CSIZE | PARENB | OPOST);
+
+    // Set size to 8 bits
+    info.c_cflag |= CS8;
+
+    // Set time and bytes to enable read at once
+    info.c_cc[VTIME] = 0;
+    info.c_cc[VMIN] = 0;
+    speed_t baud_rate = B115200;
+    if (cfsetospeed(&info, baud_rate) < 0) {
+        fprintf(stderr,"Could not set the output speed for %s\n", device_name );
+        return -1;
+    }
+
+    if (cfsetispeed(&info, baud_rate) < 0) {
+        fprintf(stderr,"Could not set the input speed for %s\n", device_name );
+        return -1;
+    }
+
+    // Actually set the controls on the terminal
+    if (tcsetattr(fd, TCSAFLUSH, &info) < 0) {
+        close(fd);
+        fprintf(stderr,"Could not set controls on serial port %s\n", device_name );
+    }
+
+    pthread_mutex_init(&writeMutex, NULL);
+    pthread_create(&thread, NULL, RFLEX::readThread, this);
+
+    return 0;
 }
 
 RFLEX::~RFLEX() {
@@ -92,8 +143,7 @@ void RFLEX::configureSonar(const unsigned long echo_delay, const unsigned long p
     putInt32( ping_delay, &(data[4]) );
     putInt32( set_delay , &(data[8]) );
     putInt8(  val, &(data[12]) );
-    RFlexPacket packet(SONAR_PORT, 4, SONAR_RUN, 13, data );
-    serial.sendPacket(&packet);
+    sendCommand(SONAR_PORT, 4, SONAR_RUN, 13, data );
 }
 
 void RFLEX::setIrPower( const bool on ) {
@@ -118,8 +168,7 @@ void RFLEX::setIrPower( const bool on ) {
     putInt32( v4, &(data[12]) );
     putInt32( v5, &(data[16]) );
     putInt8(  v6, &(data[20]) );
-    RFlexPacket packet(IR_PORT, 0, IR_RUN, 21, data );
-    serial.sendPacket(&packet);
+    sendCommand(IR_PORT, 0, IR_RUN, 21, data );
 }
 
 void RFLEX::setBrakePower( const bool on ) {
@@ -129,20 +178,17 @@ void RFLEX::setBrakePower( const bool on ) {
     else
         brake = MOT_BRAKE_RELEASE;
 
-    RFlexPacket packet(MOT_PORT, 0, brake, 0, NULL );
-    serial.sendPacket(&packet);
+    sendCommand(MOT_PORT, 0, brake, 0, NULL );
 }
 
 void RFLEX::motionSetDefaults(  ) {
-    RFlexPacket packet(MOT_PORT, 0, MOT_SET_DEFAULTS, 0, NULL );
-    serial.sendPacket(&packet);
+    sendCommand(MOT_PORT, 0, MOT_SET_DEFAULTS, 0, NULL );
 }
 
 void RFLEX::setDigitalIoPeriod( const long period ) {
     unsigned char data[MAX_COMMAND_LENGTH];
     putInt32( period, &(data[0]) );
-    RFlexPacket packet(DIO_PORT, 0, DIO_REPORTS_REQ, 4, data );
-    serial.sendPacket(&packet);
+    sendCommand(DIO_PORT, 0, DIO_REPORTS_REQ, 4, data );
 }
 
 void RFLEX::setOdometryPeriod( const long period ) {
@@ -155,8 +201,7 @@ void RFLEX::setOdometryPeriod( const long period ) {
 
     putInt32( period, &(data[0]) );         /* period in ms */
     putInt32( mask, &(data[4]) );           /* mask */
-    RFlexPacket packet(MOT_PORT, 0, MOT_SYSTEM_REPORT_REQ, 8, data );
-    serial.sendPacket(&packet);
+    sendCommand(MOT_PORT, 0, MOT_SYSTEM_REPORT_REQ, 8, data );
 }
 
 void RFLEX::setVelocity( const long tvel, const long rvel, const long acceleration) {
@@ -170,8 +215,7 @@ void RFLEX::setVelocity( const long tvel, const long rvel, const long accelerati
     putInt32( STD_TRANS_TORQUE, &(data[9]) );       /* trans torque */
     putInt8( sgn(tvel),         &(data[13]) );      /* trans direction */
 
-    RFlexPacket tpacket(MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
-    serial.sendPacket(&tpacket);
+    sendCommand(MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
 
     putInt8( 1,                 &(data[0]) );       /* rotational motion */
     putInt32( urvel,            &(data[1]) );       /* abs rot velocity  */
@@ -180,21 +224,18 @@ void RFLEX::setVelocity( const long tvel, const long rvel, const long accelerati
     putInt32( STD_ROT_TORQUE,   &(data[9]) );       /* rot torque */
     putInt8( sgn(rvel),         &(data[13]) );      /* rot direction */
 
-    RFlexPacket rpacket(MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
-    serial.sendPacket(&rpacket);
+    sendCommand(MOT_PORT, 0, MOT_AXIS_SET_DIR, 14, data );
 }
 
 void RFLEX::sendSystemStatusCommand() {
-    RFlexPacket packet(SYS_PORT, 0, SYS_STATUS, 0, NULL );
-    serial.sendPacket(&packet);
+    sendCommand(SYS_PORT, 0, SYS_STATUS, 0, NULL );
 }
 
-void RFLEX::parseMotReport( RFlexPacket* pkt ) {
+void RFLEX::parseMotReport( const unsigned char* buffer ) {
     int rv, timeStamp, acc, trq;
     unsigned char axis;
-    unsigned char* buffer = pkt->data();
 
-    switch (pkt->getOpcode()) {
+    switch (buffer[PACKET_OPCODE_BYTE]) {
     case MOT_SYSTEM_REPORT:
         rv        = getInt32(&(buffer[6]));
         timeStamp = getInt32(&(buffer[10]));
@@ -215,14 +256,13 @@ void RFLEX::parseMotReport( RFlexPacket* pkt ) {
 }
 
 //processes a digital io packet from the rflex
-void RFLEX::parseDioReport( RFlexPacket* pkt ) {
+void RFLEX::parseDioReport( const unsigned char* buffer ) {
     unsigned long timeStamp;
     unsigned char length, address;
     unsigned short data;
-    unsigned char* buffer = pkt->data();
     length = buffer[5];
 
-    switch (pkt->getOpcode()) {
+    switch (buffer[PACKET_OPCODE_BYTE]) {
     case DIO_REPORT:
         if (length < 6) {
             fprintf(stderr, "DIO Data Packet too small\n");
@@ -240,9 +280,8 @@ void RFLEX::parseDioReport( RFlexPacket* pkt ) {
 }
 
 // Processes the IR sensor report
-void RFLEX::parseIrReport( RFlexPacket* pkt ) {
+void RFLEX::parseIrReport( const unsigned char* buffer ) {
     /*
-    unsigned char* buffer = pkt->data();
     unsigned char length = buffer[5];
 
     // allocate ir storage if we havent already
@@ -255,7 +294,7 @@ void RFLEX::parseIrReport( RFlexPacket* pkt ) {
             fprintf(stderr,"Error allocating ir range storage in rflex status\n");
     }
 
-    switch (pkt->getOpcode()) {
+    switch (buffer[PACKET_OPCODE_BYTE]) {
     case IR_REPORT: {
         if (length < 1) {
             fprintf(stderr, "IR Data Packet too small\n");
@@ -295,13 +334,12 @@ void RFLEX::parseIrReport( RFlexPacket* pkt ) {
 
 //processes a sys packet from the rflex - and saves the data in the
 //struct for later use, sys is primarily used for bat voltage & brake status
-void RFLEX::parseSysReport( RFlexPacket* pkt ) {
-    unsigned char* buffer = pkt->data();
+void RFLEX::parseSysReport( const unsigned char* buffer ) {
     unsigned long timeStamp;
     unsigned char length = buffer[5];
 
 
-    switch (pkt->getOpcode()) {
+    switch (buffer[PACKET_OPCODE_BYTE]) {
     case SYS_LCD_DUMP:
         // currently designed for 320x240 screen on b21r
         // stored in packed format
@@ -362,12 +400,11 @@ void RFLEX::parseSysReport( RFlexPacket* pkt ) {
 }
 
 //processes a sonar packet from the rflex
-void RFLEX::parseSonarReport( RFlexPacket* pkt ) {
-    unsigned char* buffer = pkt->data();
+void RFLEX::parseSonarReport( const unsigned char* buffer ) {
     int retval, timeStamp, count;
     unsigned char dlen = buffer[5];
 
-    switch (pkt->getOpcode()) {
+    switch (buffer[PACKET_OPCODE_BYTE]) {
     case SONAR_REPORT:
         retval    = getInt32(&(buffer[6]));
         timeStamp = getInt32(&(buffer[10]));
@@ -385,15 +422,15 @@ void RFLEX::parseSonarReport( RFlexPacket* pkt ) {
 
 //processes a joystick packet from the rflex, and sets as command if
 // joystick command enabled
-void RFLEX::parseJoyReport( RFlexPacket* pkt ) {
-    /*unsigned char* buffer = pkt->data();
+void RFLEX::parseJoyReport( const unsigned char* buffer ) {
+    /*unsigned char* buffer = buffer->data();
 
     static bool JoystickWasOn = false;
 
     int x,y;
     unsigned char buttons, dlen = buffer[5];
 
-    switch (pkt->getOpcode()) {
+    switch (buffer[PACKET_OPCODE_BYTE]) {
     case JSTK_GET_STATE:
         if (dlen < 13) {
             fprintf(stderr,"Joystick Packet too small\n");
@@ -424,50 +461,205 @@ void RFLEX::parseJoyReport( RFlexPacket* pkt ) {
 
 
 //parses a packet from the rflex, and decides what to do with it
-int RFLEX::parsePacket( RFlexPacket* pkt ) {
-    if (!pkt->isValid())
-        return 0;
-
-    switch (pkt->getPort()) {
+void RFLEX::parsePacket( const unsigned char* buffer ) {
+    switch (buffer[PACKET_PORT_BYTE]) {
     case SYS_PORT:
-        parseSysReport( pkt );
+        parseSysReport( buffer );
         break;
     case MOT_PORT:
-        parseMotReport( pkt );
+        parseMotReport( buffer );
         break;
     case JSTK_PORT:
-        parseJoyReport( pkt );
+        parseJoyReport( buffer );
         break;
     case SONAR_PORT:
-        parseSonarReport( pkt );
+        parseSonarReport( buffer );
         break;
     case DIO_PORT:
-        parseDioReport( pkt );
+        parseDioReport( buffer );
         break;
     case IR_PORT:
-        parseIrReport( pkt);
+        parseIrReport( buffer);
         break;
     default:
         break;
     }
-
-    return(1);
 }
 
-void RFLEX::parsePackets() {
-    while (serial.hasPackets()) {
-        RFlexPacket* pkt = serial.getPacket();
-        parsePacket(pkt);
-        delete pkt;
+
+
+
+
+
+
+void* RFLEX::readThread(void *ptr) {
+    RFLEX *rflex = static_cast<RFLEX *>(ptr);
+
+    while (rflex->fd>=0) {
+        // Set up the read set to include the serial port
+        fd_set read_set;
+        FD_ZERO(&read_set);
+        FD_SET(rflex->fd, &read_set);
+
+        // Is there any new data to be read from the rFlex?
+        if (select(rflex->fd + 1, &read_set, NULL, NULL, NULL) < 0) {
+            //debug("Error in select\n");
+        } else if (FD_ISSET(rflex->fd, &read_set)) {
+            rflex->readPacket();
+        }
     }
+    return NULL;
 }
 
 
+void RFLEX::readPacket() {
+    // If there's no packet ready, just return
+    const int read_size = readData();
+    if (read_size == 0)
+        return;
+
+    // Check to make sure that the packet is the correct size
+    const int data_size = read_size - PROTOCOL_SIZE;
+    if (readBuffer[PACKET_SIZE_BYTE] != data_size) {
+        //debug("Error in packet size.  Expected %i, got %i\n", data_size, static_cast<int>(readBuffer[PACKET_SIZE_BYTE]));
+        for (int i = 0; i < BUFFER_SIZE; ++i) {
+            //			debug("%2x ", static_cast<int>(readBuffer[i]));
+            //			if (((i + 1) % 10) == 0)
+            //				debug("\n");
+        }
+    }
+
+    // Calculate the packet CRC and verify that it matches
+    if (computeCRC(readBuffer + PACKET_CRC_START, data_size + PACKET_CRC_OFFSET) != readBuffer[data_size + PACKET_DATA_START_BYTE]) {
+        //		debug("CRC error: Expected %i, got %i\n", static_cast<int>(readBuffer[read_size - PROTOCOL_SIZE + PACKET_DATA_START_BYTE]), static_cast<int>(computeCRC(readBuffer + PACKET_CRC_START, data_size + PACKET_CRC_OFFSET)));
+
+        for (int i = 0; i < BUFFER_SIZE; ++i) {
+            //			debug("%2x ", static_cast<int>(readBuffer[i]));
+            //	if (((i + 1) % 10) == 0)
+            //	debug("\n");
+        }
+
+        // Eat everything up to the end of the packet
+        unsigned char tdata = 0;
+        while (tdata != ETX)
+            while (read(fd, &tdata, 1) != 1) { }
+
+        return;
+    }
+
+    parsePacket(readBuffer);
+}
 
 
+int RFLEX::readData() {
+    // Read one byte of of the packet.  No need to check for errors, since this will be called repeatedly.
+    if (read(fd, readBuffer + offset, 1) != 1)
+        return 0;
+
+    // Have we started a packet yet?
+    if (!found) {
+        // If the first character isn't an ESC, the packet is invalid.  Reset the offset and return.  This
+        // will eat badly-formed packets.
+        if (readBuffer[0] != ESC) {
+            offset = 0;
+            return 0;
+        }
+        if (offset == 0) {
+            offset = 1;
+            return 0;
+        }
+
+        // We have to wait for a STX to show up before it's a valid packet.  If we see an ESC, then we just
+        // keep looking for an STX.  If we see something else, give up and start looking for a new packet.
+        if (readBuffer[1] == STX) {
+            found = true;
+            offset = 2;
+            return 0;
+        } else if (readBuffer[1] == ESC) {
+            offset = 1;
+            return 0;
+        } else {
+            offset = 0;
+            return 0;
+        }
+    } else {
+        // If the previous character was an ESC,
+        if (readBuffer[offset - 1] == ESC) {
+            switch (readBuffer[offset]) {
+            case NUL:  // Skip over NULs
+                read(fd, readBuffer + offset, 1);  // Should we be checking the return code here?
+                ++offset;
+                return 0;
+            case SOH:  // Ignore SOHs by deleting them
+                --offset;
+                return 0;
+            case ETX: // ETX ends the packet, so return the length
+                const int retval = offset + 1;
+                found = false;
+                offset = 0;
+                return retval;
+            };
+        } else {
+            // Just increment the counter
+            ++offset;
+
+            return 0;
+        }
+    }
+
+    // Should never get here
+    return 0;
+}
 
 
+bool RFLEX::sendCommand(const unsigned char port, const unsigned char id, const unsigned char opcode, const int length, unsigned char* data) {
+    pthread_mutex_lock(&writeMutex);
+
+    // Header
+    writeBuffer[0] = ESC;
+    writeBuffer[1] = STX;
+    writeBuffer[PACKET_PORT_BYTE] = port;
+    writeBuffer[PACKET_ID_BYTE] = id;
+    writeBuffer[PACKET_OPCODE_BYTE] = opcode;
+    writeBuffer[PACKET_SIZE_BYTE] = static_cast<unsigned char>(length);
+    for (int i=0; i<length; i++) {
+        writeBuffer[6+i] = data[i];
+    }
+    // Footer
+    writeBuffer[length + PACKET_DATA_START_BYTE] = computeCRC(writeBuffer + PACKET_CRC_START, length + PACKET_CRC_OFFSET);
+    writeBuffer[length + PACKET_DATA_START_BYTE + 1] = ESC;
+    writeBuffer[length + PACKET_DATA_START_BYTE + 2] = ETX;
+
+    int ret = writePacket(length + 9);
+    pthread_mutex_unlock(&writeMutex);
+    return ret;
+}
 
 
+bool RFLEX::writePacket(const int length) const {
+    if (fd<0)
+        return false;
 
+    int bytes_written = 0;
+
+    while (bytes_written < length) {
+        int n = write(fd, writeBuffer + bytes_written, length - bytes_written);
+        if (n < 0)
+            return false;
+        else
+            bytes_written += n;
+
+        // Put in a short wait to let the rFlex controller catch up
+        usleep(1000);
+    }
+
+    return true;
+}
+
+unsigned char RFLEX::computeCRC(const unsigned char *buffer, const int n) {
+    int crc =buffer[0];
+    for (int i = 1; i < n; ++i)
+        crc ^= buffer[i];
+    return crc;
+}
 

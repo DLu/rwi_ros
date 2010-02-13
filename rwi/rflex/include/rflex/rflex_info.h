@@ -26,7 +26,19 @@
 #ifndef RFLEX_INFO_H
 #define RFLEX_INFO_H
 
+// Protocol information
+static const int PROTOCOL_SIZE = 9;
+static const int PACKET_CRC_START = 2;
+static const int PACKET_CRC_OFFSET = 4;
+// Packet data slots
+static const int PACKET_PORT_BYTE = 2;
+static const int PACKET_ID_BYTE = 3;
+static const int PACKET_OPCODE_BYTE = 4;
+static const int PACKET_SIZE_BYTE = 5;
+static const int PACKET_DATA_START_BYTE = 6;
+
 #define MAX_COMMAND_LENGTH             256
+#define BUFFER_SIZE 1024
 
 #define STD_TRANS_TORQUE    30000
 #define STD_ROT_ACC         100000
@@ -93,5 +105,12 @@
 #define BUMPER_ADDRESS 0x40
 
 #define SONAR_MAX_COUNT 224
+
+// Escape codes used in the data packets
+static const unsigned char NUL = 0;
+static const unsigned char SOH = 1;
+static const unsigned char STX = 2;
+static const unsigned char ETX = 3;
+static const unsigned char ESC = 27;
 
 #endif

@@ -136,8 +136,6 @@ void B21Node::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
 }
 
 void B21Node::spinOnce() {
-    driver.parsePackets();
-
     // Sending the status command too often overwhelms the driver
     if (updateTimer==100) {
         driver.sendSystemStatusCommand();
@@ -252,6 +250,7 @@ void B21Node::publishTransforms() {
 
 void B21Node::publishSonar() {
     sensor_msgs::PointCloud cloud;
+    cloud.header.stamp = ros::Time::now();
     cloud.header.frame_id = "base";
     driver.getBaseSonarPoints(&cloud);
     base_sonar_pub.publish(cloud);
@@ -262,14 +261,14 @@ void B21Node::publishSonar() {
 }
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "B21");
+    ros::init(argc, argv, "b21");
     B21Node node;
     std::string port;
     node.n.param<std::string>("port", port, "/dev/ttyUSB0");
     ROS_INFO("Attempting to connect to %s", port.c_str());
     if (node.initialize(port.c_str())<0) {
         ROS_ERROR("Could not initialize RFLEX driver!\n");
-	return 0;
+        return 0;
     }
     ROS_INFO("Connected!");
 

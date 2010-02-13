@@ -132,14 +132,14 @@ void B21::getSonarPoints(const int ringi, sensor_msgs::PointCloud* cloud) const 
     cloud->set_points_size(numSonar);
     int c = 0;
     for (int i = 0; i < numSonar; ++i) {
-        if (readings[i] < SONAR_MAX_RANGE) {
+        if (readings[i] < SONAR_MAX_RANGE/ (float) RANGE_CONVERSION) {
             double angle =  SONAR_RING_START_ANGLE[ringi] + SONAR_RING_ANGLE_INC[ringi]*i;
             angle *= M_PI / 180.0;
+
             double d = SONAR_RING_DIAMETER[ringi] + readings[i];
-            d *= RANGE_CONVERSION;
             cloud->points[c].x = cos(angle)*d;
             cloud->points[c].y = sin(angle)*d;
-            cloud->points[c].x = SONAR_RING_HEIGHT[ringi];
+            cloud->points[c].z = SONAR_RING_HEIGHT[ringi];
             c++;
         }
     }
