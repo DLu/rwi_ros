@@ -80,6 +80,7 @@ RFLEX::RFLEX() {
     }
 
     // allocate dio
+    /// @todo Allocate space for DIO
 #warning allocate dio
 }
 
@@ -329,6 +330,7 @@ void RFLEX::parseIrReport( const unsigned char* buffer ) {
         break;
     }*/
 #warning IR Unreported
+    /** @todo implement IR Reporting */
 }
 
 
@@ -457,6 +459,7 @@ void RFLEX::parseJoyReport( const unsigned char* buffer ) {
         break;
     }*/
 #warning joystick control not implemented
+    /** @todo implement joystick control */
 }
 
 

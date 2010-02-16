@@ -1,21 +1,3 @@
-/*
- *  B21 Node for ROS - By David Lu!! 2/2010
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- */
 #include <string>
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
@@ -33,17 +15,38 @@
 #define PTU_X_OFFSET 0.09
 #define PTU_Z_OFFSET .755
 
+/**
+ *  \brief B21 Node for ROS
+ *  By David Lu!! 2/2010
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ */
 class B21Node {
     private:
         B21 driver;
 
-        ros::Subscriber subs[4];
-        ros::Publisher base_sonar_pub;
-        ros::Publisher body_sonar_pub;
-        ros::Publisher voltage_pub, brake_power_pub, sonar_power_pub;
-        ros::Publisher odom_pub;
-        ros::Publisher plugged_pub;
-        tf::TransformBroadcaster broadcaster;
+        ros::Subscriber subs[4];			///< Subscriber handles (cmd_vel, cmd_accel, cmd_sonar_power, cmd_brake_power)
+        ros::Publisher base_sonar_pub;		///< Sonar Publisher for Base Sonars (sonar_cloud_base)
+        ros::Publisher body_sonar_pub;		///< Sonar Publisher for Body Sonars (sonar_cloud_body)
+        ros::Publisher voltage_pub;			///< Voltage Publisher (voltage)
+        ros::Publisher brake_power_pub;		///< Brake Power Publisher (brake_power)
+        ros::Publisher sonar_power_pub;		///< Sonar Power Publisher (sonar_power)
+        ros::Publisher odom_pub;			///< Odometry Publisher (odom)
+        ros::Publisher plugged_pub;			///< Plugged In Publisher (plugged_in)
+        tf::TransformBroadcaster broadcaster; ///< Transform Broadcaster
 
         bool isSonarOn, isBrakeOn;
         float acceleration;
@@ -112,24 +115,24 @@ B21Node::~B21Node() {
     driver.setIrPower(false);
 }
 
-// cmd_vel callback
+/// cmd_vel callback
 void B21Node::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
     cmdTranslation = msg->linear.x;
     cmdRotation = msg->angular.z;
 }
 
-// cmd_acceleration callback
+/// cmd_acceleration callback
 void B21Node::SetAcceleration (const std_msgs::Float32::ConstPtr& msg) {
     acceleration = msg->data;
 }
 
-// cmd_sonar_power callback
+/// cmd_sonar_power callback
 void B21Node::ToggleSonarPower(const std_msgs::Bool::ConstPtr& msg) {
     isSonarOn=msg->data;
     sonar_dirty = true;
 }
 
-// cmd_brake_power callback
+/// cmd_brake_power callback
 void B21Node::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
     isBrakeOn = msg->data;
     brake_dirty = true;
@@ -169,6 +172,8 @@ void B21Node::spinOnce() {
     publishSonar();
 }
 
+/** Integrates over the lastest raw odometry readings from
+ * the driver to get x, y and theta */
 void B21Node::publishOdometry() {
     float distance = driver.getDistance();
     float bearing = driver.getBearing();
