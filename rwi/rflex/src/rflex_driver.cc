@@ -70,6 +70,8 @@ static void putInt32( unsigned long l, unsigned char *bytes ) {
 RFLEX::RFLEX() {
     distance = bearing = transVelocity = rotVelocity = 0;
     voltage = 0;
+    offset = 0;
+    found = false;
     brake = true;
 
     // initialise the LCD dump array
