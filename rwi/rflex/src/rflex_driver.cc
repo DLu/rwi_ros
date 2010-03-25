@@ -71,6 +71,7 @@ RFLEX::RFLEX() {
     distance = bearing = transVelocity = rotVelocity = 0;
     voltage = 0;
     offset = 0;
+    odomReady = 0;
     found = false;
     brake = true;
 
@@ -246,9 +247,11 @@ void RFLEX::parseMotReport( const unsigned char* buffer ) {
         if (axis == 0) {
             distance = getInt32(&(buffer[15]));
             transVelocity = getInt32(&(buffer[19]));
+            odomReady = odomReady | 1;
         } else if (axis == 1) {
             bearing = getInt32(&(buffer[15]));
             rotVelocity = getInt32(&(buffer[19]));
+            odomReady = odomReady | 2;
         }
         acc       = getInt32(&(buffer[23]));
         trq       = getInt32(&(buffer[27]));
