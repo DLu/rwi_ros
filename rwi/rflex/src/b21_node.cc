@@ -4,16 +4,11 @@
 #include <rflex/b21_driver.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
+#include <sensor_msgs/JointState.h>
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/PointCloud.h>
 #include <nav_msgs/Odometry.h>
 #include <angles/angles.h>
-
-#define BASE_OFFSET 0.15
-#define BODY_OFFSET 0.485
-#define LASER_OFFSET -0.275
-#define PTU_X_OFFSET 0.09
-#define PTU_Z_OFFSET .755
 
 /**
  *  \brief B21 Node for ROS
@@ -46,7 +41,8 @@ class B21Node {
         ros::Publisher sonar_power_pub;		///< Sonar Power Publisher (sonar_power)
         ros::Publisher odom_pub;			///< Odometry Publisher (odom)
         ros::Publisher plugged_pub;			///< Plugged In Publisher (plugged_in)
-        tf::TransformBroadcaster broadcaster; ///< Transform Broadcaster
+        ros::Publisher joint_pub; ///< Joint State Publisher (state)
+        tf::TransformBroadcaster broadcaster; ///< Transform Broadcaster (for odom)
 
         bool isSonarOn, isBrakeOn;
         float acceleration;
@@ -58,7 +54,6 @@ class B21Node {
         int updateTimer;
 
         void publishOdometry();
-        void publishTransforms();
         void publishSonar();
 
     public:
@@ -94,6 +89,7 @@ B21Node::B21Node() : n ("~") {
     voltage_pub = n.advertise<std_msgs::Float32>("voltage", 1);
     odom_pub = n.advertise<nav_msgs::Odometry>("odom", 50);
     plugged_pub = n.advertise<std_msgs::Bool>("plugged_in", 1);
+    joint_pub = n.advertise<sensor_msgs::JointState>("state", 1);
 }
 
 int B21Node::initialize(const char* port) {
@@ -168,7 +164,6 @@ void B21Node::spinOnce() {
     voltage_pub.publish(vmsg);
 
     publishOdometry();
-    publishTransforms();
     publishSonar();
 }
 
@@ -195,12 +190,11 @@ void B21Node::publishOdometry() {
         //first, we'll publish the transform over tf
         geometry_msgs::TransformStamped odom_trans;
         odom_trans.header.stamp = ros::Time::now();
-        odom_trans.header.frame_id = "odom";
+        odom_trans.header.frame_id = "world";
         odom_trans.child_frame_id = "base";
 
         odom_trans.transform.translation.x = x_odo;
         odom_trans.transform.translation.y = y_odo;
-        odom_trans.transform.translation.z = BASE_OFFSET;
         odom_trans.transform.rotation = odom_quat;
 
         //send the transform
@@ -209,12 +203,11 @@ void B21Node::publishOdometry() {
         //next, we'll publish the odometry message over ROS
         nav_msgs::Odometry odom;
         odom.header.stamp = ros::Time::now();
-        odom.header.frame_id = "odom";
+        odom.header.frame_id = "world";
 
         //set the position
         odom.pose.pose.position.x = x_odo;
         odom.pose.pose.position.y = y_odo;
-        odom.pose.pose.position.z = BASE_OFFSET;
         odom.pose.pose.orientation = odom_quat;
 
         //set the velocity
@@ -226,31 +219,20 @@ void B21Node::publishOdometry() {
 
         //publish the message
         odom_pub.publish(odom);
+
+        // finally, publish the joint state
+        sensor_msgs::JointState joint_state;
+        joint_state.header.stamp = ros::Time::now();
+        joint_state.set_name_size(1);
+        joint_state.set_position_size(1);
+        joint_state.name[0] = "lewis_twist";
+        joint_state.position[0] = last_bearing;
+
+        joint_pub.publish(joint_state);
+
     }
     last_distance = distance;
     last_bearing = bearing;
-}
-void B21Node::publishTransforms() {
-    geometry_msgs::TransformStamped basebody_trans;
-    basebody_trans.header.stamp = ros::Time::now();
-    basebody_trans.header.frame_id = "base";
-    basebody_trans.child_frame_id = "body";
-    basebody_trans.transform.translation.z = BODY_OFFSET;
-    basebody_trans.transform.rotation = tf::createQuaternionMsgFromYaw(last_bearing);
-    broadcaster.sendTransform(basebody_trans);
-
-    geometry_msgs::TransformStamped other_trans;
-    other_trans.header.stamp = ros::Time::now();
-    other_trans.header.frame_id = "body";
-    other_trans.child_frame_id = "laser";
-    other_trans.transform.translation.z = LASER_OFFSET;
-    other_trans.transform.rotation = tf::createQuaternionMsgFromYaw(0);
-    broadcaster.sendTransform(other_trans);
-
-    other_trans.child_frame_id = "ptu_base";
-    other_trans.transform.translation.y = PTU_X_OFFSET;
-    other_trans.transform.translation.z = PTU_Z_OFFSET;
-    broadcaster.sendTransform(other_trans);
 }
 
 void B21Node::publishSonar() {
