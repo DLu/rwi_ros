@@ -64,7 +64,7 @@ const float SONAR_RING_HEIGHT[] = {0.055, -0.06};
 #define BUMPER_ADDRESS_STYLE 0
 #define BUMPER_BIT_STYLE 1
 #define BUMPER_STYLE 0
-#define HOME_BEARING -967561
+#define HOME_BEARING -32500
 
 // IR Constants
 // ============
