@@ -40,7 +40,10 @@ float B21::getDistance() const {
 }
 
 float B21::getBearing() const {
-    return (bearing - HOME_BEARING) / (float) ODO_ANGLE_CONVERSION;
+    if (isOdomReady())
+        return (bearing - home_bearing) / (float) ODO_ANGLE_CONVERSION;
+    else
+        return bearing / (float) ODO_ANGLE_CONVERSION;
 }
 
 float B21::getTranslationalVelocity() const {
@@ -142,6 +145,22 @@ void B21::getSonarPoints(const int ringi, sensor_msgs::PointCloud* cloud) const 
             cloud->points[c].z = SONAR_RING_HEIGHT[ringi];
             c++;
         }
+    }
+}
+
+void B21::processDioEvent(unsigned char address, unsigned short data) {
+
+    if (address == HEADING_HOME_ADDRESS) {
+        home_bearing = bearing;
+        odomReady |= 4;
+        printf("B21 HOME %f \n", home_bearing / (float) ODO_ANGLE_CONVERSION);
+    }// check if the dio packet came from a bumper packet
+    else if ((address >= BUMPER_ADDRESS) && (address < (BUMPER_ADDRESS+BUMPER_COUNT))) {
+        printf("(bump) address = 0x%02x 0x%02x",address, data);
+        // assign low data byte to the bumpers (16 bit DIO data, low 4 bits give which corners or the panel are 'bumped')
+        // bumpers[address - BUMPER_ADDRESS] = data & 0x0F;
+    } else {
+        printf("B21 DIO: address 0x%02x (%d) value 0x%02x (%d)\n", address, address, data, data);
     }
 }
 

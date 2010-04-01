@@ -81,10 +81,6 @@ RFLEX::RFLEX() {
         lcdX=320/8;
         lcdY=240;
     }
-
-    // allocate dio
-    /// @todo Allocate space for DIO
-#warning allocate dio
 }
 
 int RFLEX::initialize(const char* device_name) {
@@ -277,12 +273,16 @@ void RFLEX::parseDioReport( const unsigned char* buffer ) {
         timeStamp = getInt32(&(buffer[6]));
         address = buffer[10];
         data = getInt16(&(buffer[11]));
+        processDioEvent(address, data);
 
-        printf("DIO: address 0x%02x (%d) value 0x%02x (%d)\n", address, address, data, data);
         break;
     default:
         break;
     }
+}
+
+void RFLEX::processDioEvent(unsigned char address, unsigned short data) {
+    printf("DIO: address 0x%02x (%d) value 0x%02x (%d)\n", address, address, data, data);
 }
 
 // Processes the IR sensor report

@@ -97,11 +97,10 @@ class RFLEX {
          * Updates the brake and battery status. */
         void sendSystemStatusCommand();
 
-        bool isOdomReady() {
-            return odomReady == 3;
-        }
-
     protected:
+
+        virtual void processDioEvent(unsigned char address, unsigned short data);
+
         int distance;			///< Raw translational odometry
         int bearing;			///< Raw rotational odometry
         int transVelocity;		///< Raw translational velocity
@@ -120,7 +119,6 @@ class RFLEX {
         unsigned char * irRanges; ///< Raw values from IR sensors
         int home_bearing_found;
         int odomReady;
-
 
     private:
         void parsePacket(const unsigned char* buffer);

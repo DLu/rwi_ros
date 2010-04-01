@@ -66,6 +66,18 @@ class B21 : public RFLEX {
          * \param acceleration Translational acceleration (in m/s/s) */
         void setMovement(float tvel, float rvel, float acceleration);
 
+        /** Processes the DIO packets - called from RFflex Driver
+         * \param address origin
+         * \param data values */
+        void processDioEvent(unsigned char address, unsigned short data);
+
+        /** Detects whether the robot has all the necessary components
+         * to calculate odometry
+         * \return bool true if robot has read its distance, bearing and home bearing */
+        bool isOdomReady() const {
+            return odomReady==7;
+        }
+
     private:
         /**\param ringi BODY_INDEX or BASE_INDEX
          * \param readings Data structure into which the sonar readings are saved */
@@ -73,6 +85,8 @@ class B21 : public RFLEX {
         /**\param ringi BODY_INDEX or BASE_INDEX
          * \param cloud Data structure into which the sonar readings are saved */
         void getSonarPoints(const int ringi, sensor_msgs::PointCloud* cloud) const;
+
+        int home_bearing; ///< Last home bearing (arbitrary units)
 
         // Not allowed to use these
         B21(const B21 &b21); 				///< Private constructor - Don't use
