@@ -28,22 +28,29 @@
 #include <math.h>
 
 B21::B21() {
-    // empty constructor
+    found_bearing = false;
+    found_distance = false;
 }
 
 B21::~B21() {
     // empty destructor
 }
 
-float B21::getDistance() const {
-    return distance / (float) ODO_DISTANCE_CONVERSION;
+float B21::getDistance() {
+    if (!found_distance && isOdomReady()) {
+        first_distance = distance;
+        found_distance = true;
+    }
+
+    return (distance-first_distance) / (float) ODO_DISTANCE_CONVERSION;
 }
 
-float B21::getBearing() const {
-    if (isOdomReady())
-        return (bearing - home_bearing) / (float) ODO_ANGLE_CONVERSION;
-    else
-        return bearing / (float) ODO_ANGLE_CONVERSION;
+float B21::getBearing() {
+    if (!found_bearing && isOdomReady()) {
+        first_bearing = bearing;
+        found_bearing = true;
+    }
+    return (bearing-first_bearing) / (float) ODO_ANGLE_CONVERSION;
 }
 
 float B21::getTranslationalVelocity() const {
@@ -152,11 +159,10 @@ void B21::processDioEvent(unsigned char address, unsigned short data) {
 
     if (address == HEADING_HOME_ADDRESS) {
         home_bearing = bearing;
-        odomReady |= 4;
-        printf("B21 HOME %f \n", home_bearing / (float) ODO_ANGLE_CONVERSION);
+        printf("B21 Home %f \n", home_bearing / (float) ODO_ANGLE_CONVERSION);
     }// check if the dio packet came from a bumper packet
     else if ((address >= BUMPER_ADDRESS) && (address < (BUMPER_ADDRESS+BUMPER_COUNT))) {
-        printf("(bump) address = 0x%02x 0x%02x",address, data);
+        printf("B21 Bump address = 0x%02x 0x%02x\n",address, data);
         // assign low data byte to the bumpers (16 bit DIO data, low 4 bits give which corners or the panel are 'bumped')
         // bumpers[address - BUMPER_ADDRESS] = data & 0x0F;
     } else {

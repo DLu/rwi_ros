@@ -561,8 +561,15 @@ void RFLEX::readPacket() {
 
 int RFLEX::readData() {
     // Read one byte of of the packet.  No need to check for errors, since this will be called repeatedly.
-    if (read(fd, readBuffer + offset, 1) != 1)
+
+    int bRead = read(fd, readBuffer + offset, 1);
+    if (bRead == 0)
         return 0;
+    else if (bRead < 0) {
+        printf("Error reading from port!\n");
+        return 0;
+    }
+
 
     // Have we started a packet yet?
     if (!found) {

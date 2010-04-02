@@ -34,8 +34,8 @@ class B21 : public RFLEX {
         B21();
         virtual ~B21();
         void setSonarPower(bool);
-        float getDistance() const;
-        float getBearing() const;
+        float getDistance();
+        float getBearing();
         float getTranslationalVelocity() const;
         float getRotationalVelocity() const;
         float getVoltage() const;
@@ -75,7 +75,7 @@ class B21 : public RFLEX {
          * to calculate odometry
          * \return bool true if robot has read its distance, bearing and home bearing */
         bool isOdomReady() const {
-            return odomReady==7;
+            return odomReady==3;
         }
 
     private:
@@ -86,6 +86,10 @@ class B21 : public RFLEX {
          * \param cloud Data structure into which the sonar readings are saved */
         void getSonarPoints(const int ringi, sensor_msgs::PointCloud* cloud) const;
 
+        int first_bearing;
+        bool found_bearing;
+        int first_distance;
+        bool found_distance;
         int home_bearing; ///< Last home bearing (arbitrary units)
 
         // Not allowed to use these

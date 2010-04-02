@@ -184,57 +184,58 @@ void B21Node::publishOdometry() {
             //integrate latest motion into odometry
             x_odo += m_displacement * cos(a_odo);
             y_odo += m_displacement * sin(a_odo);
-
-            //since all odometry is 6DOF we'll need a quaternion created from yaw
-            geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(0);
-
-            //first, we'll publish the transform over tf
-            geometry_msgs::TransformStamped odom_trans;
-            odom_trans.header.stamp = ros::Time::now();
-            odom_trans.header.frame_id = "world";
-            odom_trans.child_frame_id = "base";
-
-            odom_trans.transform.translation.x = x_odo;
-            odom_trans.transform.translation.y = y_odo;
-            odom_trans.transform.rotation = odom_quat;
-
-            //send the transform
-            broadcaster.sendTransform(odom_trans);
-
-            //next, we'll publish the odometry message over ROS
-            nav_msgs::Odometry odom;
-            odom.header.stamp = ros::Time::now();
-            odom.header.frame_id = "world";
-
-            //set the position
-            odom.pose.pose.position.x = x_odo;
-            odom.pose.pose.position.y = y_odo;
-            odom.pose.pose.orientation = odom_quat;
-
-            //set the velocity
-            odom.child_frame_id = "base";
-            float tvel = driver.getTranslationalVelocity();
-            odom.twist.twist.linear.x = tvel*cos(a_odo);
-            odom.twist.twist.linear.y = tvel*sin(a_odo);
-            odom.twist.twist.angular.z = driver.getRotationalVelocity();
-
-            //publish the message
-            odom_pub.publish(odom);
-
-            // finally, publish the joint state
-            sensor_msgs::JointState joint_state;
-            joint_state.header.stamp = ros::Time::now();
-            joint_state.set_name_size(1);
-            joint_state.set_position_size(1);
-            joint_state.name[0] = "lewis_twist";
-            joint_state.position[0] = last_bearing;
-
-            joint_pub.publish(joint_state);
-
         }
         last_distance = distance;
         last_bearing = bearing;
     }
+    //since all odometry is 6DOF we'll need a quaternion created from yaw
+    geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(0);
+    //geometry_msgs::Quaternion odom_quat2 = tf::createQuaternionMsgFromYaw(last_bearing);
+
+
+    //first, we'll publish the transform over tf
+    geometry_msgs::TransformStamped odom_trans;
+    odom_trans.header.stamp = ros::Time::now();
+    odom_trans.header.frame_id = "odom";
+    odom_trans.child_frame_id = "base";
+
+    odom_trans.transform.translation.x = x_odo;
+    odom_trans.transform.translation.y = y_odo;
+    odom_trans.transform.rotation = odom_quat;
+
+    //send the transform
+    broadcaster.sendTransform(odom_trans);
+
+    //next, we'll publish the odometry message over ROS
+    nav_msgs::Odometry odom;
+    odom.header.stamp = ros::Time::now();
+    odom.header.frame_id = "odom";
+
+    //set the position
+    odom.pose.pose.position.x = x_odo;
+    odom.pose.pose.position.y = y_odo;
+    odom.pose.pose.orientation = odom_quat;
+
+    //set the velocity
+    odom.child_frame_id = "base";
+    float tvel = driver.getTranslationalVelocity();
+    odom.twist.twist.linear.x = tvel*cos(a_odo);
+    odom.twist.twist.linear.y = tvel*sin(a_odo);
+    odom.twist.twist.angular.z = driver.getRotationalVelocity();
+
+    //publish the message
+    odom_pub.publish(odom);
+
+    // finally, publish the joint state
+    sensor_msgs::JointState joint_state;
+    joint_state.header.stamp = ros::Time::now();
+    joint_state.set_name_size(1);
+    joint_state.set_position_size(1);
+    joint_state.name[0] = "lewis_twist";
+    joint_state.position[0] = last_bearing;
+
+    joint_pub.publish(joint_state);
+
 }
 
 void B21Node::publishSonar() {
