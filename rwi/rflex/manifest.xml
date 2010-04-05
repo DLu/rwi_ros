@@ -1,9 +1,9 @@
 <package>
   <description brief="rflex">
-    ROS adaptations of the RFLEX family of drivers. 
+    ROS adaptations of the RFLEX driver. 
   </description>
   <author>David V. Lu!!</author>
-  <license>BSD</license>
+  <license>GPL</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/rflex</url>
   <depend package="roscpp"/>
@@ -13,10 +13,6 @@
   <depend package="nav_msgs" />
   <depend package="tf" />
   <depend package="angles" />
-  <depend package="urdf" />
-  <depend package="robot_state_publisher" />
-  <depend package="kdl_parser" />
 
 </package>
-
 
