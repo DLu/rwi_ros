@@ -74,7 +74,7 @@ B21Node::B21Node() : n ("~") {
     isSonarOn = isBrakeOn = false;
     brake_dirty = sonar_dirty = false;
     cmdTranslation = cmdRotation = 0.0;
-    updateTimer = 0;
+    updateTimer = 99;
     initialized = false;
     subs[0] = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1,   &B21Node::NewCommand, this);
     subs[1] = n.subscribe<std_msgs::Float32>("cmd_accel", 1,     &B21Node::SetAcceleration, this);
@@ -136,20 +136,24 @@ void B21Node::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
 
 void B21Node::spinOnce() {
     // Sending the status command too often overwhelms the driver
-    if (updateTimer==100) {
+    if (updateTimer>=100) {
         driver.sendSystemStatusCommand();
         updateTimer = 0;
     }
     updateTimer++;
 
-    driver.setMovement(cmdTranslation, cmdRotation, acceleration);
+    if (cmdTranslation != 0 && cmdRotation != 0)
+        driver.setMovement(cmdTranslation, cmdRotation, acceleration);
+
     if (sonar_dirty) {
         driver.setSonarPower(isSonarOn);
         sonar_dirty = false;
+        driver.sendSystemStatusCommand();
     }
     if (brake_dirty) {
         driver.setBrakePower(isBrakeOn);
         brake_dirty = false;
+        updateTimer = 99;
     }
 
     std_msgs::Bool bmsg;
