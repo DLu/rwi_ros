@@ -142,7 +142,7 @@ void B21Node::spinOnce() {
     }
     updateTimer++;
 
-    if (cmdTranslation != 0 && cmdRotation != 0)
+    if (cmdTranslation != 0 || cmdRotation != 0)
         driver.setMovement(cmdTranslation, cmdRotation, acceleration);
 
     if (sonar_dirty) {
