@@ -42,6 +42,7 @@ class B21Node {
         ros::Publisher odom_pub;			///< Odometry Publisher (odom)
         ros::Publisher plugged_pub;			///< Plugged In Publisher (plugged_in)
         ros::Publisher joint_pub; ///< Joint State Publisher (state)
+        ros::Publisher bump_pub; ///< Bump Publisher (bumps)
         tf::TransformBroadcaster broadcaster; ///< Transform Broadcaster (for odom)
 
         bool isSonarOn, isBrakeOn;
@@ -55,6 +56,7 @@ class B21Node {
 
         void publishOdometry();
         void publishSonar();
+        void publishBumps();
 
     public:
         ros::NodeHandle n;
@@ -90,6 +92,7 @@ B21Node::B21Node() : n ("~") {
     odom_pub = n.advertise<nav_msgs::Odometry>("odom", 50);
     plugged_pub = n.advertise<std_msgs::Bool>("plugged_in", 1);
     joint_pub = n.advertise<sensor_msgs::JointState>("state", 1);
+    bump_pub = n.advertise<sensor_msgs::PointCloud>("bump", 5);
 }
 
 int B21Node::initialize(const char* port) {
@@ -169,6 +172,7 @@ void B21Node::spinOnce() {
 
     publishOdometry();
     publishSonar();
+    publishBumps();
 }
 
 /** Integrates over the lastest raw odometry readings from
@@ -250,6 +254,18 @@ void B21Node::publishSonar() {
     base_sonar_pub.publish(cloud);
 
     driver.getBodySonarPoints(&cloud);
+    cloud.header.frame_id = "body";
+    body_sonar_pub.publish(cloud);
+}
+
+void B21Node::publishBumps() {
+    sensor_msgs::PointCloud cloud;
+    cloud.header.stamp = ros::Time::now();
+    cloud.header.frame_id = "base";
+    driver.getBaseBumps(&cloud);
+    base_sonar_pub.publish(cloud);
+
+    driver.getBodyBumps(&cloud);
     cloud.header.frame_id = "body";
     body_sonar_pub.publish(cloud);
 }

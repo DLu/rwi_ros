@@ -30,10 +30,15 @@
 B21::B21() {
     found_bearing = false;
     found_distance = false;
+    bumps = new int*[2];
+    bumps[0] = new int[BUMPERS_PER[0]];
+    bumps[1] = new int[BUMPERS_PER[1]];
 }
 
 B21::~B21() {
-    // empty destructor
+    delete bumps[0];
+    delete bumps[1];
+    delete bumps;
 }
 
 float B21::getDistance() {
@@ -99,6 +104,14 @@ void B21::getBaseSonarPoints(sensor_msgs::PointCloud* cloud) const {
     getSonarPoints(BASE_INDEX, cloud);
 }
 
+void B21::getBodyBumps(sensor_msgs::PointCloud* cloud) const {
+    getBumps(BODY_INDEX, cloud);
+}
+
+void B21::getBaseBumps(sensor_msgs::PointCloud* cloud) const {
+    getBumps(BASE_INDEX, cloud);
+}
+
 void B21::setSonarPower(bool on) {
     unsigned long echo, ping, set, val;
     if (on) {
@@ -155,6 +168,27 @@ void B21::getSonarPoints(const int ringi, sensor_msgs::PointCloud* cloud) const 
     }
 }
 
+void B21::getBumps(const int index, sensor_msgs::PointCloud* cloud) const {
+    int c = 0;
+    double wedge = 2 * M_PI / BUMPERS_PER[index];
+    double d = SONAR_RING_DIAMETER[index];
+
+    for (int i=0;i<BUMPERS_PER[index];i++) {
+        int value = bumps[index][i];
+        double angle = wedge * (i + .05);
+        for (int j=0;j<4;j++) {
+            int mask = 1 << j;
+            if ((value & mask) > 0) {
+                double aoff = BUMPER_ANGLE_OFFSET[j]*wedge/2;
+                cloud->points[c].x = cos(angle+aoff)*d;
+                cloud->points[c].y = sin(angle+aoff)*d;
+                cloud->points[c].z = .05*BUMPER_HEIGHT_OFFSET[j];
+                c++;
+            }
+        }
+    }
+}
+
 void B21::processDioEvent(unsigned char address, unsigned short data) {
 
     if (address == HEADING_HOME_ADDRESS) {
@@ -162,9 +196,12 @@ void B21::processDioEvent(unsigned char address, unsigned short data) {
         printf("B21 Home %f \n", home_bearing / (float) ODO_ANGLE_CONVERSION);
     }// check if the dio packet came from a bumper packet
     else if ((address >= BUMPER_ADDRESS) && (address < (BUMPER_ADDRESS+BUMPER_COUNT))) {
-        printf("B21 Bump address = 0x%02x 0x%02x\n",address, data);
-        // assign low data byte to the bumpers (16 bit DIO data, low 4 bits give which corners or the panel are 'bumped')
-        // bumpers[address - BUMPER_ADDRESS] = data & 0x0F;
+        int index =0, rot = address - BUMPER_ADDRESS;
+        if (rot > BUMPERS_PER[index]) {
+            rot -= BUMPERS_PER[index];
+            index++;
+        }
+        bumps[index][rot] = data;
     } else {
         printf("B21 DIO: address 0x%02x (%d) value 0x%02x (%d)\n", address, address, data, data);
     }

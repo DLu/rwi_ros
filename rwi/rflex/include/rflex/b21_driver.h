@@ -60,6 +60,14 @@ class B21 : public RFLEX {
          * \param cloud Data structure into which the sonar readings are saved */
         void getBaseSonarPoints(sensor_msgs::PointCloud* cloud) const;
 
+        /** Gets a point cloud for the bump sensors on the body
+             * \param cloud Data structure into which the bump readings are saved */
+        void getBodyBumps(sensor_msgs::PointCloud* cloud) const;
+
+        /** Gets a point cloud for the bump sensors on the base
+         * \param cloud Data structure into which the bump readings are saved */
+        void getBaseBumps(sensor_msgs::PointCloud* cloud) const;
+
         /** Sets the motion of the robot
          * \param tvel Translational velocity (in m/s)
          * \param rvel Rotational velocity (in radian/s)
@@ -86,11 +94,16 @@ class B21 : public RFLEX {
          * \param cloud Data structure into which the sonar readings are saved */
         void getSonarPoints(const int ringi, sensor_msgs::PointCloud* cloud) const;
 
+        /**\param index BODY_INDEX or BASE_INDEX
+           \param cloud Data structure into which the bump sensors are saved */
+        void getBumps(const int index, sensor_msgs::PointCloud* cloud) const;
+
         int first_bearing;
         bool found_bearing;
         int first_distance;
         bool found_distance;
         int home_bearing; ///< Last home bearing (arbitrary units)
+        int** bumps;
 
         // Not allowed to use these
         B21(const B21 &b21); 				///< Private constructor - Don't use

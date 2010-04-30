@@ -59,12 +59,17 @@ const float SONAR_RING_HEIGHT[] = {0.055, -0.06};
 // Digital IO constants
 // ====================
 #define HEADING_HOME_ADDRESS 0x31
+#define HOME_BEARING -32500
+
 #define BUMPER_ADDRESS 0x40
 #define BUMPER_COUNT 14
 #define BUMPER_ADDRESS_STYLE 0
 #define BUMPER_BIT_STYLE 1
 #define BUMPER_STYLE 0
-#define HOME_BEARING -32500
+const int BUMPERS_PER[] = {6,8};
+const double BUMPER_ANGLE_OFFSET[] = {1,-1,1,-1};
+const double BUMPER_HEIGHT_OFFSET[] = {1,1,-1,-1};
+
 
 // IR Constants
 // ============
