@@ -28,11 +28,16 @@
 #include <math.h>
 
 B21::B21() {
-    found_bearing = false;
     found_distance = false;
     bumps = new int*[2];
-    bumps[0] = new int[BUMPERS_PER[0]];
-    bumps[1] = new int[BUMPERS_PER[1]];
+
+    for (int index=0;index<2;index++) {
+        bumps[index] = new int[BUMPERS_PER[index]];
+        for (int i=0;i<BUMPERS_PER[index];i++) {
+            bumps[index][i] =0;
+        }
+    }
+
 }
 
 B21::~B21() {
@@ -51,11 +56,7 @@ float B21::getDistance() {
 }
 
 float B21::getBearing() {
-    if (!found_bearing && isOdomReady()) {
-        first_bearing = bearing;
-        found_bearing = true;
-    }
-    return (bearing-first_bearing) / (float) ODO_ANGLE_CONVERSION;
+    return (bearing-HOME_BEARING) / (float) ODO_ANGLE_CONVERSION;
 }
 
 float B21::getTranslationalVelocity() const {
@@ -104,12 +105,12 @@ void B21::getBaseSonarPoints(sensor_msgs::PointCloud* cloud) const {
     getSonarPoints(BASE_INDEX, cloud);
 }
 
-void B21::getBodyBumps(sensor_msgs::PointCloud* cloud) const {
-    getBumps(BODY_INDEX, cloud);
+int B21::getBodyBumps(sensor_msgs::PointCloud* cloud) const {
+    return getBumps(BODY_INDEX, cloud);
 }
 
-void B21::getBaseBumps(sensor_msgs::PointCloud* cloud) const {
-    getBumps(BASE_INDEX, cloud);
+int B21::getBaseBumps(sensor_msgs::PointCloud* cloud) const {
+    return getBumps(BASE_INDEX, cloud);
 }
 
 void B21::setSonarPower(bool on) {
@@ -168,25 +169,40 @@ void B21::getSonarPoints(const int ringi, sensor_msgs::PointCloud* cloud) const 
     }
 }
 
-void B21::getBumps(const int index, sensor_msgs::PointCloud* cloud) const {
+int B21::getBumps(const int index, sensor_msgs::PointCloud* cloud) const {
     int c = 0;
     double wedge = 2 * M_PI / BUMPERS_PER[index];
-    double d = SONAR_RING_DIAMETER[index];
-
+    double d = SONAR_RING_DIAMETER[index]*1.1;
+    int total = 0;
     for (int i=0;i<BUMPERS_PER[index];i++) {
         int value = bumps[index][i];
-        double angle = wedge * (i + .05);
         for (int j=0;j<4;j++) {
             int mask = 1 << j;
             if ((value & mask) > 0) {
-                double aoff = BUMPER_ANGLE_OFFSET[j]*wedge/2;
-                cloud->points[c].x = cos(angle+aoff)*d;
-                cloud->points[c].y = sin(angle+aoff)*d;
-                cloud->points[c].z = .05*BUMPER_HEIGHT_OFFSET[j];
+                total++;
+            }
+        }
+    }
+
+    cloud->set_points_size(total);
+    if (total==0)
+        return 0;
+    for (int i=0;i<BUMPERS_PER[index];i++) {
+        int value = bumps[index][i];
+        double angle = wedge * (2.5 - i);
+        for (int j=0;j<4;j++) {
+            int mask = 1 << j;
+            if ((value & mask) > 0) {
+                double aoff = BUMPER_ANGLE_OFFSET[j]*wedge/3;
+                cloud->points[c].x = cos(angle-aoff)*d;
+                cloud->points[c].y = sin(angle-aoff)*d;
+                cloud->points[c].z = BUMPER_HEIGHT_OFFSET[index][j];
                 c++;
             }
         }
     }
+    return total;
+
 }
 
 void B21::processDioEvent(unsigned char address, unsigned short data) {

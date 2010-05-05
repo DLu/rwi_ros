@@ -52,7 +52,10 @@ class B21Node {
         float cmdTranslation, cmdRotation;
         bool brake_dirty, sonar_dirty;
         bool initialized;
+        float first_bearing;
         int updateTimer;
+        int prev_bumps;
+        bool sonar_just_on;
 
         void publishOdometry();
         void publishSonar();
@@ -75,9 +78,11 @@ class B21Node {
 B21Node::B21Node() : n ("~") {
     isSonarOn = isBrakeOn = false;
     brake_dirty = sonar_dirty = false;
+    sonar_just_on = false;
     cmdTranslation = cmdRotation = 0.0;
     updateTimer = 99;
     initialized = false;
+    prev_bumps = 0;
     subs[0] = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1,   &B21Node::NewCommand, this);
     subs[1] = n.subscribe<std_msgs::Float32>("cmd_accel", 1,     &B21Node::SetAcceleration, this);
     subs[2] = n.subscribe<std_msgs::Bool>("cmd_sonar_power", 1, &B21Node::ToggleSonarPower, this);
@@ -178,28 +183,37 @@ void B21Node::spinOnce() {
 /** Integrates over the lastest raw odometry readings from
  * the driver to get x, y and theta */
 void B21Node::publishOdometry() {
-    if (driver.isOdomReady()) {
-        float distance = driver.getDistance();
-        float bearing = angles::normalize_angle(driver.getBearing());
-
-        if (!initialized) {
-            initialized = true;
-        } else {
-
-            a_odo += bearing - last_bearing;
-            a_odo = angles::normalize_angle(a_odo);
-            float m_displacement = distance-last_distance;
-            //integrate latest motion into odometry
-            x_odo += m_displacement * cos(a_odo);
-            y_odo += m_displacement * sin(a_odo);
-        }
-        last_distance = distance;
-        last_bearing = bearing;
+    if (!driver.isOdomReady()) {
+        return;
     }
-    //since all odometry is 6DOF we'll need a quaternion created from yaw
-    geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(0);
-    //geometry_msgs::Quaternion odom_quat2 = tf::createQuaternionMsgFromYaw(last_bearing);
 
+    float distance = driver.getDistance();
+    float true_bearing = angles::normalize_angle(driver.getBearing());
+
+    if (!initialized) {
+        initialized = true;
+        first_bearing = true_bearing;
+        a_odo = 0*true_bearing;
+    } else {
+        float bearing = true_bearing - first_bearing;
+        float d_dist = distance-last_distance;
+        float d_bearing = bearing - last_bearing;
+
+        if (d_dist > 50 || d_dist < -50)
+            return;
+
+        a_odo += d_bearing;
+        a_odo = angles::normalize_angle(a_odo);
+
+        //integrate latest motion into odometry
+        x_odo += d_dist * cos(a_odo);
+        y_odo += d_dist * sin(a_odo);
+    }
+    last_distance = distance;
+    last_bearing = true_bearing - first_bearing;
+
+    //since all odometry is 6DOF we'll need a quaternion created from yaw
+    geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(-first_bearing);
 
     //first, we'll publish the transform over tf
     geometry_msgs::TransformStamped odom_trans;
@@ -240,7 +254,7 @@ void B21Node::publishOdometry() {
     joint_state.set_name_size(1);
     joint_state.set_position_size(1);
     joint_state.name[0] = "lewis_twist";
-    joint_state.position[0] = last_bearing;
+    joint_state.position[0] = true_bearing;
 
     joint_pub.publish(joint_state);
 
@@ -250,24 +264,36 @@ void B21Node::publishSonar() {
     sensor_msgs::PointCloud cloud;
     cloud.header.stamp = ros::Time::now();
     cloud.header.frame_id = "base";
-    driver.getBaseSonarPoints(&cloud);
-    base_sonar_pub.publish(cloud);
 
-    driver.getBodySonarPoints(&cloud);
-    cloud.header.frame_id = "body";
-    body_sonar_pub.publish(cloud);
+    if (isSonarOn) {
+        driver.getBaseSonarPoints(&cloud);
+        base_sonar_pub.publish(cloud);
+
+        driver.getBodySonarPoints(&cloud);
+        cloud.header.frame_id = "body";
+        body_sonar_pub.publish(cloud);
+
+    } else if (sonar_just_on) {
+        base_sonar_pub.publish(cloud);
+        cloud.header.frame_id = "body";
+        body_sonar_pub.publish(cloud);
+    }
 }
 
 void B21Node::publishBumps() {
-    sensor_msgs::PointCloud cloud;
-    cloud.header.stamp = ros::Time::now();
-    cloud.header.frame_id = "base";
-    driver.getBaseBumps(&cloud);
-    base_sonar_pub.publish(cloud);
+    sensor_msgs::PointCloud cloud1, cloud2;
+    cloud1.header.stamp = ros::Time::now();
+    cloud2.header.stamp = ros::Time::now();
+    cloud1.header.frame_id = "base";
+    cloud2.header.frame_id = "body";
+    int bumps = driver.getBaseBumps(&cloud1) +
+                driver.getBodyBumps(&cloud2);
 
-    driver.getBodyBumps(&cloud);
-    cloud.header.frame_id = "body";
-    body_sonar_pub.publish(cloud);
+    if (bumps>0 || prev_bumps>0) {
+        bump_pub.publish(cloud1);
+        bump_pub.publish(cloud2);
+    }
+    prev_bumps = bumps;
 }
 
 int main(int argc, char** argv) {
