@@ -1,13 +1,16 @@
-<stack name="rwi" version="0.1.0">
+<stack>
   <description brief="drivers for the rwi family of robots">
 	Drivers for the robots produced by Real World Interface, Inc.
   </description>
   <author>Maintained by David V. Lu/davidlu@wustl.edu</author>
-  <license>BSD</license>  
+  <license>GPL,BSD</license>  
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/rwi</url>
-  <depend stack="common_msgs"/>
-  <depend stack="geometry"/>
-  <depend stack="ros"/>
+  <depend stack="common" /> <!-- actionlib -->
+  <depend stack="common_msgs" /> <!-- nav_msgs, geometry_msgs, sensor_msgs -->
+  <depend stack="geometry" /> <!-- tf, angles -->
+  <depend stack="joystick_drivers" /> <!-- joy -->
+  <depend stack="missouri" /> <!-- ptu_control -->
+  <depend stack="ros" /> <!-- xmlrpcpp, rospy, std_msgs, roscpp -->
 
 </stack>
