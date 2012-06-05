@@ -6,19 +6,12 @@
 	 name="lewis">
 
 <xacro:property name="thickness" value=".013" />
-<xacro:macro name="default_inertia" params="">
-	<inertial>
-		<mass value="1"/>
-		<inertia ixx="100" ixy="0" ixz="0" iyy="100" iyz="0" izz="100"/>
-		<origin/>
-	</inertial>
-</xacro:macro>
 
-<xacro:macro name="easy_cylinder" params="name radius length *vorigin *corigin *material">
+
+<xacro:macro name="easy_cylinder" params="name radius length *origin *material">
 <link name="${name}">
-	<xacro:default_inertia />
 	<visual>
-		<xacro:insert_block name="vorigin" />
+		<xacro:insert_block name="origin" />
 		<geometry>
 			<cylinder radius="${radius}" length="${length}" />
 		</geometry>
@@ -27,7 +20,7 @@
 	</visual>
 
 	<collision>
-		<xacro:insert_block name="corigin" />
+		<xacro:insert_block name="origin" />
 		<geometry>
 			<cylinder radius="${radius}" length="${length}" />
 		</geometry>
@@ -35,11 +28,10 @@
 </link>
 </xacro:macro>
 
-<xacro:macro name="easy_box" params="name size *vorigin *corigin *material">
+<xacro:macro name="easy_box" params="name size *origin *material">
 <link name="${name}">
-	<xacro:default_inertia />
 	<visual>
-		<xacro:insert_block name="vorigin" />
+		<xacro:insert_block name="origin" />
 		<geometry>
 			<box size="${size}" />
 		</geometry>
@@ -47,7 +39,7 @@
 	</visual>
 
 	<collision>
-		<xacro:insert_block name="corigin" />
+		<xacro:insert_block name="origin" />
 		<geometry>
 			<box size="${size}" />
 		</geometry>	
@@ -65,13 +57,11 @@
 
 <xacro:easy_cylinder name="base" radius="0.26" length=".30">
 	<origin xyz="0 0 .15"/>
-	<origin xyz="0 0 .15"/>
 	<material name="lewisred">
 	<color rgba="1 0 0 1"/>
 	</material>
 </xacro:easy_cylinder>
 <xacro:easy_cylinder name="body" radius="0.25" length=".53">
-	<origin xyz="0 0 .265"/>
 	<origin xyz="0 0 .265"/>
 	<material name="lewisred" />
 </xacro:easy_cylinder>
@@ -84,7 +74,7 @@
 </joint>
 
 <xacro:easy_box name="connector" size=".15 .30 .1">
-	<origin /><origin />
+	<origin />
 	<material name="black">
 		<color rgba="0 0 0 1"/>
 	</material>
@@ -95,7 +85,7 @@
 </xacro:fixedjoint>
 
 <xacro:easy_box name="laserbase" size=".04 .04 .04">
-	<origin /><origin />
+	<origin />
 	<material name="gray">
 		<color rgba=".8 .8 .8 1"/>
 	</material>
@@ -106,7 +96,7 @@
 </xacro:fixedjoint>
 
 <xacro:easy_cylinder name="laser" radius="0.02" length=".03">
-	<origin/><origin/>
+	<origin/>
 	<material name="black" />
 </xacro:easy_cylinder>
 
@@ -115,7 +105,7 @@
 </xacro:fixedjoint>
 
 <xacro:easy_cylinder name="bodytop" radius="0.25" length=".02">
-	<origin/><origin/>
+	<origin/>
 	<material name="black" />
 </xacro:easy_cylinder>
 
@@ -125,7 +115,7 @@
 
 <xacro:macro name="brace" params="prefix sign">
 	<xacro:easy_box name="${prefix}brace" size="0.1 .01 .13">
-		<origin /><origin />
+		<origin />
 		<material name="black" />
 	</xacro:easy_box>
 	<xacro:fixedjoint name="to${prefix}brace" parent="bodytop" child="${prefix}brace">
@@ -137,7 +127,7 @@
 <xacro:brace prefix="right" sign="-" />
 
 <xacro:easy_box name="platform" size="0.30 .50 .06" >
-	<origin /><origin />
+	<origin />
 	<material name="lewisred"/>
 </xacro:easy_box>
 <xacro:fixedjoint name="toplatform" parent="bodytop" child="platform">
@@ -145,7 +135,7 @@
 </xacro:fixedjoint>
 
 <xacro:easy_box name="graybase" size="0.14 .25 .005" >
-	<origin /><origin />
+	<origin />
 	<material name="gray"/>
 </xacro:easy_box>
 
@@ -155,7 +145,7 @@
 
 <xacro:macro name="post" params="num xsign ysign">
 	<xacro:easy_cylinder name="post${num}" length=".155" radius="0.005">
-		<origin /><origin />
+		<origin />
 		<material name="gray"/>
 	</xacro:easy_cylinder>
 	<xacro:fixedjoint name="topost${num}" parent="graybase" child="post${num}">
@@ -169,7 +159,7 @@
 <xacro:post num="4" xsign="-" ysign="-" />
 
 <xacro:easy_box name="graytop" size="0.135 .25 .005">
-	<origin/><origin/>
+	<origin/>
 	<material name="gray"/>
 </xacro:easy_box>
 <xacro:fixedjoint name="tograytop" parent="graybase" child="graytop">
@@ -178,7 +168,6 @@
 
 <xacro:easy_box name="ptu_base" size="0.04 .07 .05">	
 	<origin xyz="0 0.015 0"/>
-	<origin xyz="0 0.015 0"/>
 	<material name="black"/>
 </xacro:easy_box>
 <xacro:fixedjoint name="toptubase" parent="graytop" child="ptu_base">
@@ -186,7 +175,7 @@
 </xacro:fixedjoint>
 
 <xacro:easy_box name="ptu_piece" size="0.04 .04 .06">	
-	<origin/><origin/>
+	<origin/>
 	<material name="black"/>
 </xacro:easy_box>
 
@@ -198,7 +187,7 @@
 </joint>
 
 <xacro:easy_box name="ptu_mount" size="0.04 .27 .03">	
-	<origin/><origin/>
+	<origin/>
 	<material name="gray"/>
 </xacro:easy_box>
 
@@ -211,7 +200,6 @@
 
 <xacro:macro name="eye" params="prefix sign">
 <link name="${prefix}eye">
-	<xacro:default_inertia />
 	<visual>
 		<geometry>
 			<sphere radius="0.04"/>
