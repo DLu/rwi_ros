@@ -1,6 +1,0 @@
-<launch>
-	<param name="/left_up/video_device" value="/dev/video1" />
-	<param name="/right/video_device" value="/dev/video2" />
-	<node name="left_up" pkg="usb_cam" type="usb_cam_node" />
-	<node name="right" pkg="usb_cam" type="usb_cam_node" />
-</launch>
