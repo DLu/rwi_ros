@@ -2,7 +2,7 @@
   <description brief="drivers for the rwi family of robots">
 	Drivers for the robots produced by Real World Interface, Inc.
   </description>
-  <author>Maintained by David V. Lu/davidlu@wustl.edu</author>
+  <author>Maintained by David V. Lu!!</author>
   <license>GPL,BSD</license>  
   <url>http://ros.org/wiki/rwi</url>
   <depend stack="common_msgs" /> <!-- nav_msgs, geometry_msgs, sensor_msgs -->
