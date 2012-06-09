@@ -13,6 +13,9 @@
 #include <dynamic_reconfigure/server.h>
 #include <rflex/B21Config.h>
 
+#include <diagnostic_updater/diagnostic_updater.h>
+#include <diagnostic_updater/publisher.h>
+
 /**
  *  \brief B21 Node for ROS
  *  By David Lu!! 2/2010
@@ -49,6 +52,7 @@ class B21Node {
         tf::TransformBroadcaster broadcaster; ///< Transform Broadcaster (for odom)
 
         dynamic_reconfigure::Server<rflex::B21Config> server; ///< Dynamic Reconfigure Server
+        diagnostic_updater::Updater updater;
 
         bool isSonarOn, isBrakeOn;
         float acceleration;
@@ -76,6 +80,7 @@ class B21Node {
         // Message Listener
         void NewCommand      (const geometry_msgs::Twist::ConstPtr& msg);
         void configure(rflex::B21Config &config, uint32_t level);
+        void produce_diagnostics(diagnostic_updater::DiagnosticStatusWrapper &stat);
 };
 
 B21Node::B21Node() : n ("~") {
@@ -112,6 +117,8 @@ int B21Node::initialize(const char* port) {
     driver.setOdometryPeriod (100000);
     driver.setDigitalIoPeriod(100000);
     driver.motionSetDefaults();
+    updater.setHardwareID("none"); 
+    updater.add("B21 Status", this, &B21Node::produce_diagnostics);
     return 0;
 }
 
@@ -173,6 +180,7 @@ void B21Node::spinOnce() {
     publishOdometry();
     publishSonar();
     publishBumps();
+    updater.update();
 }
 
 /** Integrates over the lastest raw odometry readings from
@@ -302,6 +310,17 @@ void B21Node::publishBumps() {
         bump_pub.publish(cloud2);
     }
     prev_bumps = bumps;
+}
+
+void B21Node::produce_diagnostics(diagnostic_updater::DiagnosticStatusWrapper &stat) {
+    if( driver.getBrakePower() )
+        stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "Brake is enabled");
+    else
+        stat.summary(diagnostic_msgs::DiagnosticStatus::WARN, "Brake is disabled");
+
+    stat.add("Sonar", isSonarOn);
+    stat.add("Plugged In", driver.isPluggedIn());
+    stat.add("Voltage", driver.getVoltage());
 }
 
 int main(int argc, char** argv) {
