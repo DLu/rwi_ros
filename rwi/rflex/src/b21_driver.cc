@@ -209,7 +209,7 @@ void B21::processDioEvent(unsigned char address, unsigned short data) {
 
     if (address == HEADING_HOME_ADDRESS) {
         home_bearing = bearing;
-        printf("B21 Home %f \n", home_bearing / (float) ODO_ANGLE_CONVERSION);
+        //printf("B21 Home %f \n", home_bearing / (float) ODO_ANGLE_CONVERSION);
     }// check if the dio packet came from a bumper packet
     else if ((address >= BUMPER_ADDRESS) && (address < (BUMPER_ADDRESS+BUMPER_COUNT))) {
         int index =0, rot = address - BUMPER_ADDRESS;
@@ -219,7 +219,7 @@ void B21::processDioEvent(unsigned char address, unsigned short data) {
         }
         bumps[index][rot] = data;
     } else {
-        printf("B21 DIO: address 0x%02x (%d) value 0x%02x (%d)\n", address, address, data, data);
+        //printf("B21 DIO: address 0x%02x (%d) value 0x%02x (%d)\n", address, address, data, data);
     }
 }
 
