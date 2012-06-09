@@ -232,17 +232,6 @@ void B21Node::publishOdometry() {
 
     //send the transform
     broadcaster.sendTransform(odom_trans);
-
-    geometry_msgs::TransformStamped laser_trans;
-    laser_trans.header.stamp = ros::Time::now();
-    laser_trans.header.frame_id = "base";
-    laser_trans.child_frame_id = "laser";
-
-    laser_trans.transform.translation.z = 0.035;
-    geometry_msgs::Quaternion laser_quat = tf::createQuaternionMsgFromYaw(0);
-    laser_trans.transform.rotation = laser_quat;
-    //send the transform
-    broadcaster.sendTransform(laser_trans);
     
     //next, we'll publish the odometry message over ROS
     nav_msgs::Odometry odom;
