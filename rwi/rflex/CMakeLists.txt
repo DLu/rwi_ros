@@ -16,6 +16,11 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 rosbuild_add_library(${PROJECT_NAME} src/rflex_driver.cc)
 
+#add dynamic reconfigure api
+rosbuild_find_ros_package(dynamic_reconfigure)
+include(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
+gencfg()
+
 rosbuild_add_library(b21 src/b21_driver.cc)
 target_link_libraries(b21 ${PROJECT_NAME})
 rosbuild_add_executable(b21 src/b21_node.cc)

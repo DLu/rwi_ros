@@ -153,7 +153,7 @@ void B21::getSonarPoints(const int ringi, sensor_msgs::PointCloud* cloud) const 
     int numSonar = SONARS_PER_RING[ringi];
     float* readings = new float[numSonar];
     getSonarReadings(ringi, readings);
-    cloud->set_points_size(numSonar);
+    cloud->points.resize(numSonar);
     int c = 0;
     for (int i = 0; i < numSonar; ++i) {
         if (readings[i] < SONAR_MAX_RANGE/ (float) RANGE_CONVERSION) {
@@ -184,7 +184,7 @@ int B21::getBumps(const int index, sensor_msgs::PointCloud* cloud) const {
         }
     }
 
-    cloud->set_points_size(total);
+    cloud->points.resize(total);
     if (total==0)
         return 0;
     for (int i=0;i<BUMPERS_PER[index];i++) {

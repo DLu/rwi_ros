@@ -10,6 +10,9 @@
 #include <nav_msgs/Odometry.h>
 #include <angles/angles.h>
 
+#include <dynamic_reconfigure/server.h>
+#include <rflex/B21Config.h>
+
 /**
  *  \brief B21 Node for ROS
  *  By David Lu!! 2/2010
@@ -33,7 +36,7 @@ class B21Node {
     private:
         B21 driver;
 
-        ros::Subscriber subs[4];			///< Subscriber handles (cmd_vel, cmd_accel, cmd_sonar_power, cmd_brake_power)
+        ros::Subscriber sub;			    ///< Subscriber handle for cmd_vel
         ros::Publisher base_sonar_pub;		///< Sonar Publisher for Base Sonars (sonar_cloud_base)
         ros::Publisher body_sonar_pub;		///< Sonar Publisher for Body Sonars (sonar_cloud_body)
         ros::Publisher voltage_pub;			///< Voltage Publisher (voltage)
@@ -44,6 +47,8 @@ class B21Node {
         ros::Publisher joint_pub; ///< Joint State Publisher (state)
         ros::Publisher bump_pub; ///< Bump Publisher (bumps)
         tf::TransformBroadcaster broadcaster; ///< Transform Broadcaster (for odom)
+
+        dynamic_reconfigure::Server<rflex::B21Config> server; ///< Dynamic Reconfigure Server
 
         bool isSonarOn, isBrakeOn;
         float acceleration;
@@ -68,11 +73,9 @@ class B21Node {
         int initialize(const char* port);
         void spinOnce();
 
-        // Message Listeners
+        // Message Listener
         void NewCommand      (const geometry_msgs::Twist::ConstPtr& msg);
-        void SetAcceleration (const std_msgs::Float32   ::ConstPtr& msg);
-        void ToggleSonarPower(const std_msgs::Bool      ::ConstPtr& msg);
-        void ToggleBrakePower(const std_msgs::Bool      ::ConstPtr& msg);
+        void configure(rflex::B21Config &config, uint32_t level);
 };
 
 B21Node::B21Node() : n ("~") {
@@ -83,11 +86,12 @@ B21Node::B21Node() : n ("~") {
     updateTimer = 99;
     initialized = false;
     prev_bumps = 0;
-    subs[0] = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1,   &B21Node::NewCommand, this);
-    subs[1] = n.subscribe<std_msgs::Float32>("cmd_accel", 1,     &B21Node::SetAcceleration, this);
-    subs[2] = n.subscribe<std_msgs::Bool>("cmd_sonar_power", 1, &B21Node::ToggleSonarPower, this);
-    subs[3] = n.subscribe<std_msgs::Bool>("cmd_brake_power", 1, &B21Node::ToggleBrakePower, this);
+    sub = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1,   &B21Node::NewCommand, this);
     acceleration = 0.7;
+
+    dynamic_reconfigure::Server<rflex::B21Config>::CallbackType f;
+    f = boost::bind(&B21Node::configure, this, _1, _2);
+    server.setCallback(f);
 
     base_sonar_pub = n.advertise<sensor_msgs::PointCloud>("sonar_cloud_base", 50);
     body_sonar_pub = n.advertise<sensor_msgs::PointCloud>("sonar_cloud_body", 50);
@@ -125,21 +129,12 @@ void B21Node::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
     cmdRotation = msg->angular.z;
 }
 
-/// cmd_acceleration callback
-void B21Node::SetAcceleration (const std_msgs::Float32::ConstPtr& msg) {
-    acceleration = msg->data;
-}
-
-/// cmd_sonar_power callback
-void B21Node::ToggleSonarPower(const std_msgs::Bool::ConstPtr& msg) {
-    isSonarOn=msg->data;
-    sonar_dirty = true;
-}
-
-/// cmd_brake_power callback
-void B21Node::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
-    isBrakeOn = msg->data;
-    brake_dirty = true;
+void B21Node::configure(rflex::B21Config &config, uint32_t level) {
+    acceleration = config.cmd_accel;
+    isSonarOn    = config.sonar_enabled;
+    isBrakeOn    = config.brake_enabled;
+    sonar_dirty  = true;
+    brake_dirty  = true;
 }
 
 void B21Node::spinOnce() {
@@ -264,8 +259,8 @@ void B21Node::publishOdometry() {
     // finally, publish the joint state
     sensor_msgs::JointState joint_state;
     joint_state.header.stamp = ros::Time::now();
-    joint_state.set_name_size(1);
-    joint_state.set_position_size(1);
+    joint_state.name.resize(1);
+    joint_state.position.resize(1);
     joint_state.name[0] = "lewis_twist";
     joint_state.position[0] = true_bearing;
 
