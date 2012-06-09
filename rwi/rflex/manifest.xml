@@ -2,7 +2,7 @@
   <description brief="rflex">
     ROS adaptations of the RFLEX driver. 
   </description>
-  <author>David V. Lu!!</author>
+  <author>David V. Lu, Mikhail Medvedev</author>
   <license>GPL</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/rflex</url>

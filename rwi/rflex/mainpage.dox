@@ -6,13 +6,11 @@
  - ATRV
  - ATRV-Jr.
  - ATRV-Mini
- - B21
  - B21r
- - B14
  - B14r
  - Magellan
 
-Currently, only the B21 driver is implemented and can be run in ROS with the B21Node, but the others can be made in a similar
+Currently, there are drivers for the B21r and ATRV-Jr. The others can be made in a similar
 fashion by extending the RFLEX class and reading the protected variables. 
 
 <!-- \section codeapi Code API

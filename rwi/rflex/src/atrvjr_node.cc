@@ -1,7 +1,7 @@
 #include <string>
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
-#include <rflex/b21_driver.h>
+#include <rflex/atrvjr_driver.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
 #include <sensor_msgs/JointState.h>
@@ -11,8 +11,9 @@
 #include <angles/angles.h>
 
 /**
- *  \brief B21 Node for ROS
- *  By David Lu!! 2/2010
+ *  \brief ATRV-JR Node for ROS
+ *  By Mikhail Medvedev 02/2012
+ *  Modified from B21 node originally written by David Lu
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,9 +30,9 @@
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
-class B21Node {
+class ATRVJRNode {
     private:
-        B21 driver;
+        ATRVJR driver;
 
         ros::Subscriber subs[4];			///< Subscriber handles (cmd_vel, cmd_accel, cmd_sonar_power, cmd_brake_power)
         ros::Publisher base_sonar_pub;		///< Sonar Publisher for Base Sonars (sonar_cloud_base)
@@ -63,8 +64,8 @@ class B21Node {
 
     public:
         ros::NodeHandle n;
-        B21Node();
-        ~B21Node();
+        ATRVJRNode();
+        ~ATRVJRNode();
         int initialize(const char* port);
         void spinOnce();
 
@@ -75,7 +76,7 @@ class B21Node {
         void ToggleBrakePower(const std_msgs::Bool      ::ConstPtr& msg);
 };
 
-B21Node::B21Node() : n ("~") {
+ATRVJRNode::ATRVJRNode() : n ("~") {
     isSonarOn = isBrakeOn = false;
     brake_dirty = sonar_dirty = false;
     sonar_just_on = false;
@@ -83,10 +84,10 @@ B21Node::B21Node() : n ("~") {
     updateTimer = 99;
     initialized = false;
     prev_bumps = 0;
-    subs[0] = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1,   &B21Node::NewCommand, this);
-    subs[1] = n.subscribe<std_msgs::Float32>("cmd_accel", 1,     &B21Node::SetAcceleration, this);
-    subs[2] = n.subscribe<std_msgs::Bool>("cmd_sonar_power", 1, &B21Node::ToggleSonarPower, this);
-    subs[3] = n.subscribe<std_msgs::Bool>("cmd_brake_power", 1, &B21Node::ToggleBrakePower, this);
+    subs[0] = n.subscribe<geometry_msgs::Twist>("cmd_vel", 1,   &ATRVJRNode::NewCommand, this);
+    subs[1] = n.subscribe<std_msgs::Float32>("cmd_accel", 1,     &ATRVJRNode::SetAcceleration, this);
+    subs[2] = n.subscribe<std_msgs::Bool>("cmd_sonar_power", 1, &ATRVJRNode::ToggleSonarPower, this);
+    subs[3] = n.subscribe<std_msgs::Bool>("cmd_brake_power", 1, &ATRVJRNode::ToggleBrakePower, this);
     acceleration = 0.7;
 
     base_sonar_pub = n.advertise<sensor_msgs::PointCloud>("sonar_cloud_base", 50);
@@ -100,7 +101,7 @@ B21Node::B21Node() : n ("~") {
     bump_pub = n.advertise<sensor_msgs::PointCloud>("bump", 5);
 }
 
-int B21Node::initialize(const char* port) {
+int ATRVJRNode::initialize(const char* port) {
     int ret = driver.initialize(port);
     if (ret < 0)
         return ret;
@@ -111,7 +112,7 @@ int B21Node::initialize(const char* port) {
     return 0;
 }
 
-B21Node::~B21Node() {
+ATRVJRNode::~ATRVJRNode() {
     driver.motionSetDefaults();
     driver.setOdometryPeriod(0);
     driver.setDigitalIoPeriod(0);
@@ -120,29 +121,29 @@ B21Node::~B21Node() {
 }
 
 /// cmd_vel callback
-void B21Node::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
+void ATRVJRNode::NewCommand(const geometry_msgs::Twist::ConstPtr& msg) {
     cmdTranslation = msg->linear.x;
     cmdRotation = msg->angular.z;
 }
 
 /// cmd_acceleration callback
-void B21Node::SetAcceleration (const std_msgs::Float32::ConstPtr& msg) {
+void ATRVJRNode::SetAcceleration (const std_msgs::Float32::ConstPtr& msg) {
     acceleration = msg->data;
 }
 
 /// cmd_sonar_power callback
-void B21Node::ToggleSonarPower(const std_msgs::Bool::ConstPtr& msg) {
+void ATRVJRNode::ToggleSonarPower(const std_msgs::Bool::ConstPtr& msg) {
     isSonarOn=msg->data;
     sonar_dirty = true;
 }
 
 /// cmd_brake_power callback
-void B21Node::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
+void ATRVJRNode::ToggleBrakePower(const std_msgs::Bool::ConstPtr& msg) {
     isBrakeOn = msg->data;
     brake_dirty = true;
 }
 
-void B21Node::spinOnce() {
+void ATRVJRNode::spinOnce() {
     // Sending the status command too often overwhelms the driver
     if (updateTimer>=100) {
         driver.sendSystemStatusCommand();
@@ -182,7 +183,7 @@ void B21Node::spinOnce() {
 
 /** Integrates over the lastest raw odometry readings from
  * the driver to get x, y and theta */
-void B21Node::publishOdometry() {
+void ATRVJRNode::publishOdometry() {
     if (!driver.isOdomReady()) {
         return;
     }
@@ -193,8 +194,8 @@ void B21Node::publishOdometry() {
     if (!initialized) {
         initialized = true;
         first_bearing = true_bearing;
-	x_odo = 0;
-	y_odo = 0;
+        x_odo = 0;
+        y_odo = 0;
         a_odo = 0*true_bearing;
     } else {
         float bearing = true_bearing - first_bearing;
@@ -221,7 +222,7 @@ void B21Node::publishOdometry() {
     geometry_msgs::TransformStamped odom_trans;
     odom_trans.header.stamp = ros::Time::now();
     odom_trans.header.frame_id = "odom";
-    odom_trans.child_frame_id = "base";
+    odom_trans.child_frame_id = "base_link";
 
     odom_trans.transform.translation.x = x_odo;
     odom_trans.transform.translation.y = y_odo;
@@ -230,17 +231,6 @@ void B21Node::publishOdometry() {
     //send the transform
     broadcaster.sendTransform(odom_trans);
 
-    geometry_msgs::TransformStamped laser_trans;
-    laser_trans.header.stamp = ros::Time::now();
-    laser_trans.header.frame_id = "base";
-    laser_trans.child_frame_id = "laser";
-
-    laser_trans.transform.translation.z = 0.035;
-    geometry_msgs::Quaternion laser_quat = tf::createQuaternionMsgFromYaw(0);
-    laser_trans.transform.rotation = laser_quat;
-    //send the transform
-    broadcaster.sendTransform(laser_trans);
-    
     //next, we'll publish the odometry message over ROS
     nav_msgs::Odometry odom;
     odom.header.stamp = ros::Time::now();
@@ -252,7 +242,7 @@ void B21Node::publishOdometry() {
     odom.pose.pose.orientation = odom_quat;
 
     //set the velocity
-    odom.child_frame_id = "base";
+    odom.child_frame_id = "base_link";
     float tvel = driver.getTranslationalVelocity();
     odom.twist.twist.linear.x = tvel*cos(a_odo);
     odom.twist.twist.linear.y = tvel*sin(a_odo);
@@ -273,10 +263,10 @@ void B21Node::publishOdometry() {
 
 }
 
-void B21Node::publishSonar() {
+void ATRVJRNode::publishSonar() {
     sensor_msgs::PointCloud cloud;
     cloud.header.stamp = ros::Time::now();
-    cloud.header.frame_id = "base";
+    cloud.header.frame_id = "base_link";
 
     if (isSonarOn) {
         driver.getBaseSonarPoints(&cloud);
@@ -293,11 +283,11 @@ void B21Node::publishSonar() {
     }
 }
 
-void B21Node::publishBumps() {
+void ATRVJRNode::publishBumps() {
     sensor_msgs::PointCloud cloud1, cloud2;
     cloud1.header.stamp = ros::Time::now();
     cloud2.header.stamp = ros::Time::now();
-    cloud1.header.frame_id = "base";
+    cloud1.header.frame_id = "base_link";
     cloud2.header.frame_id = "body";
     int bumps = driver.getBaseBumps(&cloud1) +
                 driver.getBodyBumps(&cloud2);
@@ -310,8 +300,8 @@ void B21Node::publishBumps() {
 }
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "b21");
-    B21Node node;
+    ros::init(argc, argv, "atrvjr");
+    ATRVJRNode node;
     std::string port;
     node.n.param<std::string>("port", port, "/dev/ttyUSB0");
     ROS_INFO("Attempting to connect to %s", port.c_str());

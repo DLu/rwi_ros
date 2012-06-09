@@ -14,6 +14,12 @@ rosbuild_init()
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-rosbuild_add_library(b21 src/rflex_driver.cc)
+rosbuild_add_library(${PROJECT_NAME} src/rflex_driver.cc)
+
 rosbuild_add_library(b21 src/b21_driver.cc)
+target_link_libraries(b21 ${PROJECT_NAME})
 rosbuild_add_executable(b21 src/b21_node.cc)
+
+rosbuild_add_library(atrvjr src/atrvjr_driver.cc)
+target_link_libraries(atrvjr ${PROJECT_NAME})
+rosbuild_add_executable(atrvjr src/atrvjr_node.cc)
