@@ -1,19 +1,14 @@
 <package>
-  <description brief="joy2ptu">
-
-     joy2ptu
-
+  <description brief="Teleop Controller for B21">
+    Teleop Controller for B21
   </description>
   <author>David V. Lu!!</author>
   <license>BSD</license>
-  <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/joy2ptu</url>
+  <url>http://ros.org/wiki/b21_teleop</url>
   <depend package="sensor_msgs" />
   <depend package="geometry_msgs"/>
   <depend package="roscpp"/>
   <depend package="joy"/>
-
-
 </package>
 
 

@@ -53,9 +53,9 @@ void joyRcvd(const joy::Joy::ConstPtr& msg) {
         }
         sensor_msgs::JointState joint_cmd;
         joint_cmd.header.stamp = ros::Time::now();
-        joint_cmd.set_name_size(2);
-        joint_cmd.set_position_size(2);
-        joint_cmd.set_velocity_size(2);
+        joint_cmd.name.resize(2);
+        joint_cmd.position.resize(2);
+        joint_cmd.velocity.resize(2);
         joint_cmd.name[0] ="head_pan_joint";
         joint_cmd.position[0] = pan;
         joint_cmd.velocity[0] = pvel;
@@ -81,7 +81,7 @@ void joyRcvd(const joy::Joy::ConstPtr& msg) {
 }
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "joy2ptu");
+    ros::init(argc, argv, "b21_teleop");
     ros::NodeHandle n;
 
     int hz = 30;
