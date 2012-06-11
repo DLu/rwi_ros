@@ -302,10 +302,10 @@ void B21Node::publishBumps() {
 }
 
 void B21Node::produce_diagnostics(diagnostic_updater::DiagnosticStatusWrapper &stat) {
-    if( driver.getBrakePower() )
-        stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "Brake is enabled");
+    if( !driver.getBrakePower() )
+        stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "Motors are enabled");
     else
-        stat.summary(diagnostic_msgs::DiagnosticStatus::WARN, "Brake is disabled");
+        stat.summary(diagnostic_msgs::DiagnosticStatus::WARN, "Brake is enabled");
 
     stat.add("Sonar", isSonarOn);
     stat.add("Plugged In", driver.isPluggedIn());
