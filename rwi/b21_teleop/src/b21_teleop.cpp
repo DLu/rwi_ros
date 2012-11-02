@@ -1,6 +1,6 @@
 #include <string>
 #include <ros/ros.h>
-#include <joy/Joy.h>
+#include <sensor_msgs/Joy.h>
 #include <sensor_msgs/JointState.h>
 #include <geometry_msgs/Twist.h>
 
@@ -19,7 +19,7 @@ void posRcvd(const sensor_msgs::JointState::ConstPtr& msg) {
     tcur = msg->position[1];
 }
 
-void joyRcvd(const joy::Joy::ConstPtr& msg) {
+void joyRcvd(const sensor_msgs::Joy::ConstPtr& msg) {
     float x = msg->axes[0], y = msg->axes[1];
     float pan, pvel, tilt, tvel;
     float dead = 0.25;
@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
     pcur = tcur = 0;
 
     ros::Subscriber sub =
-        n.subscribe<joy::Joy>("joy", 1, joyRcvd);
+        n.subscribe<sensor_msgs::Joy>("joy", 1, joyRcvd);
     ros::Subscriber sub2=
         n.subscribe<sensor_msgs::JointState>("/ptu/state", 1, posRcvd);
 
