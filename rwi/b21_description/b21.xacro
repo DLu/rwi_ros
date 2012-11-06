@@ -55,29 +55,39 @@
 </joint>
 </xacro:macro>
 
-<xacro:easy_cylinder name="base" radius="0.26" length=".30">
+<xacro:easy_cylinder name="base_link" radius="0.10" length=".30">
 	<origin xyz="0 0 .15"/>
-	<material name="lewisred">
-	<color rgba="1 0 0 1"/>
+	<material name="black">
+		<color rgba="0 0 0 1"/>
 	</material>
 </xacro:easy_cylinder>
+
 <xacro:easy_cylinder name="body" radius="0.25" length=".53">
 	<origin xyz="0 0 .265"/>
-	<material name="lewisred" />
+	<material name="lewisred">
+		<color rgba="1 0 0 1"/>
+	</material>
+</xacro:easy_cylinder>
+
+<xacro:fixedjoint name="base_to_body" parent="base_link" child="body">
+	<origin xyz="0 0 .40"/>
+</xacro:fixedjoint>
+
+<xacro:easy_cylinder name="base" radius="0.26" length=".30">
+	<origin xyz="0 0 .15"/>
+	<material name="lewisred"/>
 </xacro:easy_cylinder>
 
 <joint name="lewis_twist" type="continuous">
-	<parent link="base"/>
-	<child link="body"/>
-	<origin xyz="0 0 .40"/>
+	<parent link="body"/>
+	<child link="base"/>
+	<origin xyz="0 0 -.40"/>
 	<axis xyz="0 0 1"/>
 </joint>
 
 <xacro:easy_box name="connector" size=".15 .30 .1">
 	<origin />
-	<material name="black">
-		<color rgba="0 0 0 1"/>
-	</material>
+	<material name="black"/>
 </xacro:easy_box>
 
 <xacro:fixedjoint name="connect" parent="body" child="connector">
