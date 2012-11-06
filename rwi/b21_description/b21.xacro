@@ -92,7 +92,7 @@
 </xacro:easy_box>
 
 <xacro:fixedjoint name="tolaserbase" parent="body" child="laserbase">
-	<origin xyz="0 0 -.08"/>
+	<origin xyz="-0.29 0 -.08"/>
 </xacro:fixedjoint>
 
 <xacro:easy_cylinder name="laser" radius="0.02" length=".03">
