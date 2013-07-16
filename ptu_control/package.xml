@@ -2,14 +2,14 @@
   <name>ptu_control</name>
   <version>1.0.0</version>
   <description>Provides an actionlib interface for PTUs which listen for JointState messages (such as PTU46)</description>
-  <!-- <maintainer>Dan Lazewatsky</maintainer> -->
+  <author>Dan Lazewatsky</author>
+  <maintainer email="davidvlu@gmail.com">David V. Lu!!</maintainer>
 
   <license>BSD</license>
 
   <url type="website">http://ros.org/wiki/ptu_control</url>
   <!-- <url type="bugtracker"></url> -->
 
-  <author>Dan Lazewatsky</author>
 
   <!-- <build_depend>rospy</build_depend> -->
   <!-- <build_depend>roscpp</build_depend> -->

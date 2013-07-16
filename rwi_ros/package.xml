@@ -1,8 +1,9 @@
 <package>
-  <name>.</name>
+  <name>rwi_ros</name>
   <version>1.0.0</version>
   <description>Drivers for the robots produced by Real World Interface, Inc.</description>
-  <!-- <maintainer>Maintained by David V. Lu!!</maintainer> -->
+  <author>David V. Lu!!</author>
+  <maintainer email="davidvlu@gmail.com">David V. Lu!!</maintainer>
 
   <license>GPL</license>
   <license>BSD</license>
@@ -10,20 +11,11 @@
   <url type="website">http://ros.org/wiki/rwi</url>
   <!-- <url type="bugtracker"></url> -->
 
-  <author>Maintained by David V. Lu!!</author>
-
-
-  <run_depend>rflex_gui</run_depend>
   <run_depend>b21_teleop</run_depend>
   <run_depend>ptu46</run_depend>
   <run_depend>b21_description</run_depend>
   <run_depend>ptu_control</run_depend>
-  <run_depend>rflex_dashboard</run_depend>
   <run_depend>rflex</run_depend>
-
-
-
-
 
   <export>
     <metapackage/>

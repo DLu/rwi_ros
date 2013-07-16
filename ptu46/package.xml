@@ -3,7 +3,7 @@
   <version>1.0.0</version>
   <description>Driver for the Directed Perception ptu46 pan/tilt driver, forked from player</description>
   <author>Erik Karulf</author>
-  <author>David V. Lu!!</author>  
+  <author>David V. Lu!!</author>
   <maintainer email="davidvlu@gmail.com">David V. Lu!!</maintainer>
 
   <license>GPL</license>

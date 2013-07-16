@@ -2,14 +2,13 @@
   <name>rflex_gui</name>
   <version>1.0.0</version>
   <description>rflex_gui</description>
-  <!-- <maintainer>David V. Lu!!</maintainer> -->
+  <author>David V. Lu!!</author>
+  <maintainer email="davidvlu@gmail.com">David V. Lu!!</maintainer>
 
   <license>BSD</license>
 
   <url type="website">http://ros.org/wiki/rflex_gui</url>
   <!-- <url type="bugtracker"></url> -->
-
-  <author>David V. Lu!!</author>
 
   <!-- <build_depend>rospy</build_depend> -->
   <!-- <build_depend>std_msgs</build_depend> -->
