@@ -1,0 +1,21 @@
+<package>
+  <name>b21_description</name>
+  <version>1.0.0</version>
+  <description>b21_description</description>
+  <!-- <maintainer>David V. Lu!!</maintainer> -->
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/b21_description</url>
+  <!-- <url type="bugtracker"></url> -->
+
+  <author>David V. Lu!!</author>
+
+  <!-- <build_depend>urdf</build_depend> -->
+  <!-- <run_depend>urdf</run_depend> -->
+  <!-- <test_depend>urdf</test_depend> -->
+
+  <export>
+
+  </export>
+</package>

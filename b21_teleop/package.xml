@@ -1,0 +1,30 @@
+<package>
+  <name>b21_teleop</name>
+  <version>1.0.0</version>
+  <description>Teleop Controller for B21</description>
+  <!-- <maintainer>David V. Lu!!</maintainer> -->
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/b21_teleop</url>
+  <!-- <url type="bugtracker"></url> -->
+
+  <author>David V. Lu!!</author>
+
+  <!-- <build_depend>sensor_msgs</build_depend> -->
+  <!-- <build_depend>geometry_msgs</build_depend> -->
+  <!-- <build_depend>roscpp</build_depend> -->
+  <!-- <build_depend>joy</build_depend> -->
+  <!-- <run_depend>sensor_msgs</run_depend> -->
+  <!-- <run_depend>geometry_msgs</run_depend> -->
+  <!-- <run_depend>roscpp</run_depend> -->
+  <!-- <run_depend>joy</run_depend> -->
+  <!-- <test_depend>sensor_msgs</test_depend> -->
+  <!-- <test_depend>geometry_msgs</test_depend> -->
+  <!-- <test_depend>roscpp</test_depend> -->
+  <!-- <test_depend>joy</test_depend> -->
+
+  <export>
+
+  </export>
+</package>

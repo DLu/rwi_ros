@@ -1,0 +1,42 @@
+<package>
+  <name>ptu_control</name>
+  <version>1.0.0</version>
+  <description>Provides an actionlib interface for PTUs which listen for JointState messages (such as PTU46)</description>
+  <!-- <maintainer>Dan Lazewatsky</maintainer> -->
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/ptu_control</url>
+  <!-- <url type="bugtracker"></url> -->
+
+  <author>Dan Lazewatsky</author>
+
+  <!-- <build_depend>rospy</build_depend> -->
+  <!-- <build_depend>roscpp</build_depend> -->
+  <!-- <build_depend>actionlib</build_depend> -->
+  <!-- <build_depend>actionlib_msgs</build_depend> -->
+  <!-- <build_depend>sensor_msgs</build_depend> -->
+  <!-- <build_depend>std_msgs</build_depend> -->
+  <!-- <build_depend>nav_msgs</build_depend> -->
+  <!-- <build_depend>tf</build_depend> -->
+  <!-- <run_depend>rospy</run_depend> -->
+  <!-- <run_depend>roscpp</run_depend> -->
+  <!-- <run_depend>actionlib</run_depend> -->
+  <!-- <run_depend>actionlib_msgs</run_depend> -->
+  <!-- <run_depend>sensor_msgs</run_depend> -->
+  <!-- <run_depend>std_msgs</run_depend> -->
+  <!-- <run_depend>nav_msgs</run_depend> -->
+  <!-- <run_depend>tf</run_depend> -->
+  <!-- <test_depend>rospy</test_depend> -->
+  <!-- <test_depend>roscpp</test_depend> -->
+  <!-- <test_depend>actionlib</test_depend> -->
+  <!-- <test_depend>actionlib_msgs</test_depend> -->
+  <!-- <test_depend>sensor_msgs</test_depend> -->
+  <!-- <test_depend>std_msgs</test_depend> -->
+  <!-- <test_depend>nav_msgs</test_depend> -->
+  <!-- <test_depend>tf</test_depend> -->
+
+  <export>
+    <cpp cflags="-I${prefix}/msg/cpp -I${prefix}/srv/cpp -I${prefix}/include"/>
+  </export>
+</package>
