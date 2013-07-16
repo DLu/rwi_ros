@@ -10,4 +10,6 @@
   <url type="website">http://ros.org/wiki/b21_description</url>
 
   <run_depend>xacro</run_depend>
+  <buildtool_depend>catkin</buildtool_depend>
+
 </package>

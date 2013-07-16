@@ -26,5 +26,6 @@
   <run_depend>actionlib</run_depend>
   <run_depend>ptu_control</run_depend>
   <run_depend>diagnostic_updater</run_depend>
+  <buildtool_depend>catkin</buildtool_depend>
 
 </package>

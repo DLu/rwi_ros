@@ -5,7 +5,7 @@ project(rflex)
 # TODO: remove all from COMPONENTS that are not catkin packages.
 find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs geometry_msgs nav_msgs tf angles dynamic_reconfigure diagnostic_updater)
 
-# include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS})
 # CATKIN_MIGRATION: removed during catkin migration
 # cmake_minimum_required(VERSION 2.4.6)
 
@@ -27,20 +27,19 @@ find_package(catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs geometry_msg
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-add_library(${PROJECT_NAME} src/rflex_driver.cc)
-
 #add dynamic reconfigure api
-rosbuild_find_ros_package(dynamic_reconfigure)
-include(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
-gencfg()
+generate_dynamic_reconfigure_options(cfg/B21.cfg)
 
-add_library(b21 src/b21_driver.cc)
-target_link_libraries(b21 ${PROJECT_NAME})
+add_library(rflex src/rflex_driver.cc)
+
+
+add_library(b21_driver src/b21_driver.cc)
 add_executable(b21 src/b21_node.cc)
+target_link_libraries(b21 b21_driver rflex  ${catkin_LIBRARIES})
 
-add_library(atrvjr src/atrvjr_driver.cc)
-target_link_libraries(atrvjr ${PROJECT_NAME})
+add_library(atrvjr_driver src/atrvjr_driver.cc)
 add_executable(atrvjr src/atrvjr_node.cc)
+target_link_libraries(atrvjr atrvjr_driver rflex  ${catkin_LIBRARIES})
 
 # TODO: fill in what other packages will need to use this package
 ## DEPENDS: system dependencies of this project that dependent projects also need
@@ -50,6 +49,6 @@ add_executable(atrvjr src/atrvjr_node.cc)
 catkin_package(
     DEPENDS roscpp std_msgs sensor_msgs geometry_msgs nav_msgs tf angles dynamic_reconfigure diagnostic_updater
     CATKIN_DEPENDS # TODO
-    INCLUDE_DIRS # TODO include
+    INCLUDE_DIRS include
     LIBRARIES # TODO
 )

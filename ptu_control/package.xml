@@ -11,30 +11,23 @@
   <!-- <url type="bugtracker"></url> -->
 
 
-  <!-- <build_depend>rospy</build_depend> -->
-  <!-- <build_depend>roscpp</build_depend> -->
-  <!-- <build_depend>actionlib</build_depend> -->
-  <!-- <build_depend>actionlib_msgs</build_depend> -->
-  <!-- <build_depend>sensor_msgs</build_depend> -->
-  <!-- <build_depend>std_msgs</build_depend> -->
-  <!-- <build_depend>nav_msgs</build_depend> -->
-  <!-- <build_depend>tf</build_depend> -->
-  <!-- <run_depend>rospy</run_depend> -->
-  <!-- <run_depend>roscpp</run_depend> -->
-  <!-- <run_depend>actionlib</run_depend> -->
-  <!-- <run_depend>actionlib_msgs</run_depend> -->
-  <!-- <run_depend>sensor_msgs</run_depend> -->
-  <!-- <run_depend>std_msgs</run_depend> -->
-  <!-- <run_depend>nav_msgs</run_depend> -->
-  <!-- <run_depend>tf</run_depend> -->
-  <!-- <test_depend>rospy</test_depend> -->
-  <!-- <test_depend>roscpp</test_depend> -->
-  <!-- <test_depend>actionlib</test_depend> -->
-  <!-- <test_depend>actionlib_msgs</test_depend> -->
-  <!-- <test_depend>sensor_msgs</test_depend> -->
-  <!-- <test_depend>std_msgs</test_depend> -->
-  <!-- <test_depend>nav_msgs</test_depend> -->
-  <!-- <test_depend>tf</test_depend> -->
+  <build_depend>rospy</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>actionlib</build_depend>
+  <build_depend>actionlib_msgs</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>tf</build_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>roscpp</run_depend>
+  <run_depend>actionlib</run_depend>
+  <run_depend>actionlib_msgs</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>nav_msgs</run_depend>
+  <run_depend>tf</run_depend>
+  <buildtool_depend>catkin</buildtool_depend>
 
   <export>
     <cpp cflags="-I${prefix}/msg/cpp -I${prefix}/srv/cpp -I${prefix}/include"/>
