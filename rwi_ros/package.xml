@@ -16,6 +16,7 @@
   <run_depend>b21_description</run_depend>
   <run_depend>ptu_control</run_depend>
   <run_depend>rflex</run_depend>
+  <buildtool_depend>catkin</buildtool_depend>
 
   <export>
     <metapackage/>
