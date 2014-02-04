@@ -229,5 +229,71 @@
 
 <xacro:eye prefix="left" sign="" />
 <xacro:eye prefix="right" sign="-" />
+
+<xacro:macro name="sonar" params="name parent xyz yaw">
+<link name="${name}">
+	<visual>
+	    <origin rpy="0 1.51 0"/>
+		<geometry>
+			<cylinder radius=".02" length=".01" />
+		</geometry>
+		<material name="black"/>
+	</visual>
+</link>
+<xacro:fixedjoint name="to${name}" parent="${parent}" child="${name}">
+    <origin xyz="${xyz}" rpy="0 0 ${yaw}"/>
+</xacro:fixedjoint>    
+</xacro:macro>
+
+<xacro:sonar name="base_sonar_0" parent="base" xyz="0.000000 0.260000 .06" yaw="1.570796" />
+<xacro:sonar name="base_sonar_1" parent="base" xyz="0.067293 0.251141 .06" yaw="1.308997" />
+<xacro:sonar name="base_sonar_2" parent="base" xyz="0.130000 0.225167 .06" yaw="1.047198" />
+<xacro:sonar name="base_sonar_3" parent="base" xyz="0.183848 0.183848 .06" yaw="0.785398" />
+<xacro:sonar name="base_sonar_4" parent="base" xyz="0.225167 0.130000 .06" yaw="0.523599" />
+<xacro:sonar name="base_sonar_5" parent="base" xyz="0.251141 0.067293 .06" yaw="0.261799" />
+<xacro:sonar name="base_sonar_6" parent="base" xyz="0.260000 0.000000 .06" yaw="0.000000" />
+<xacro:sonar name="base_sonar_7" parent="base" xyz="0.251141 -0.067293 .06" yaw="-0.261799" />
+<xacro:sonar name="base_sonar_8" parent="base" xyz="0.225167 -0.130000 .06" yaw="-0.523599" />
+<xacro:sonar name="base_sonar_9" parent="base" xyz="0.183848 -0.183848 .06" yaw="-0.785398" />
+<xacro:sonar name="base_sonar_10" parent="base" xyz="0.130000 -0.225167 .06" yaw="-1.047198" />
+<xacro:sonar name="base_sonar_11" parent="base" xyz="0.067293 -0.251141 .06" yaw="-1.308997" />
+<xacro:sonar name="base_sonar_12" parent="base" xyz="0.000000 -0.260000 .06" yaw="-1.570796" />
+<xacro:sonar name="base_sonar_13" parent="base" xyz="-0.067293 -0.251141 .06" yaw="-1.832596" />
+<xacro:sonar name="base_sonar_14" parent="base" xyz="-0.130000 -0.225167 .06" yaw="-2.094395" />
+<xacro:sonar name="base_sonar_15" parent="base" xyz="-0.183848 -0.183848 .06" yaw="-2.356194" />
+<xacro:sonar name="base_sonar_16" parent="base" xyz="-0.225167 -0.130000 .06" yaw="-2.617994" />
+<xacro:sonar name="base_sonar_17" parent="base" xyz="-0.251141 -0.067293 .06" yaw="-2.879793" />
+<xacro:sonar name="base_sonar_18" parent="base" xyz="-0.260000 -0.000000 .06" yaw="-3.141593" />
+<xacro:sonar name="base_sonar_19" parent="base" xyz="-0.251141 0.067293 .06" yaw="-3.403392" />
+<xacro:sonar name="base_sonar_20" parent="base" xyz="-0.225167 0.130000 .06" yaw="-3.665191" />
+<xacro:sonar name="base_sonar_21" parent="base" xyz="-0.183848 0.183848 .06" yaw="-3.926991" />
+<xacro:sonar name="base_sonar_22" parent="base" xyz="-0.130000 0.225167 .06" yaw="-4.188790" />
+<xacro:sonar name="base_sonar_23" parent="base" xyz="-0.067293 0.251141 .06" yaw="-4.450590" />
+<xacro:sonar name="body_sonar_0" parent="body" xyz="-0.250000 0.000000 .35"  yaw="3.141593" />
+<xacro:sonar name="body_sonar_1" parent="body" xyz="-0.241481 0.064705 .35"  yaw="2.879793" />
+<xacro:sonar name="body_sonar_2" parent="body" xyz="-0.216506 0.125000 .35"  yaw="2.617994" />
+<xacro:sonar name="body_sonar_3" parent="body" xyz="-0.176777 0.176777 .35"  yaw="2.356194" />
+<xacro:sonar name="body_sonar_4" parent="body" xyz="-0.125000 0.216506 .35"  yaw="2.094395" />
+<xacro:sonar name="body_sonar_5" parent="body" xyz="-0.064705 0.241481 .35"  yaw="1.832596" />
+<xacro:sonar name="body_sonar_6" parent="body" xyz="0.000000 0.250000 .35"  yaw="1.570796" />
+<xacro:sonar name="body_sonar_7" parent="body" xyz="0.064705 0.241481 .35"  yaw="1.308997" />
+<xacro:sonar name="body_sonar_8" parent="body" xyz="0.125000 0.216506 .35"  yaw="1.047198" />
+<xacro:sonar name="body_sonar_9" parent="body" xyz="0.176777 0.176777 .35"  yaw="0.785398" />
+<xacro:sonar name="body_sonar_10" parent="body" xyz="0.216506 0.125000 .35"  yaw="0.523599" />
+<xacro:sonar name="body_sonar_11" parent="body" xyz="0.241481 0.064705 .35"  yaw="0.261799" />
+<xacro:sonar name="body_sonar_12" parent="body" xyz="0.250000 0.000000 .35"  yaw="0.000000" />
+<xacro:sonar name="body_sonar_13" parent="body" xyz="0.241481 -0.064705 .35"  yaw="-0.261799" />
+<xacro:sonar name="body_sonar_14" parent="body" xyz="0.216506 -0.125000 .35"  yaw="-0.523599" />
+<xacro:sonar name="body_sonar_15" parent="body" xyz="0.176777 -0.176777 .35"  yaw="-0.785398" />
+<xacro:sonar name="body_sonar_16" parent="body" xyz="0.125000 -0.216506 .35"  yaw="-1.047198" />
+<xacro:sonar name="body_sonar_17" parent="body" xyz="0.064705 -0.241481 .35"  yaw="-1.308997" />
+<xacro:sonar name="body_sonar_18" parent="body" xyz="0.000000 -0.250000 .35"  yaw="-1.570796" />
+<xacro:sonar name="body_sonar_19" parent="body" xyz="-0.064705 -0.241481 .35"  yaw="-1.832596" />
+<xacro:sonar name="body_sonar_20" parent="body" xyz="-0.125000 -0.216506 .35"  yaw="-2.094395" />
+<xacro:sonar name="body_sonar_21" parent="body" xyz="-0.176777 -0.176777 .35"  yaw="-2.356194" />
+<xacro:sonar name="body_sonar_22" parent="body" xyz="-0.216506 -0.125000 .35"  yaw="-2.617994" />
+<xacro:sonar name="body_sonar_23" parent="body" xyz="-0.241481 -0.064705 .35"  yaw="-2.879793" />
+
+
 </robot>
 

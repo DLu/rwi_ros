@@ -5,6 +5,7 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
 #include <sensor_msgs/JointState.h>
+#include <sensor_msgs/Range.h>
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/PointCloud.h>
 #include <nav_msgs/Odometry.h>
@@ -42,6 +43,7 @@ class B21Node {
         ros::Subscriber sub;			    ///< Subscriber handle for cmd_vel
         ros::Publisher base_sonar_pub;		///< Sonar Publisher for Base Sonars (sonar_cloud_base)
         ros::Publisher body_sonar_pub;		///< Sonar Publisher for Body Sonars (sonar_cloud_body)
+        ros::Publisher range_pub;
         ros::Publisher voltage_pub;			///< Voltage Publisher (voltage)
         ros::Publisher brake_power_pub;		///< Brake Power Publisher (brake_power)
         ros::Publisher sonar_power_pub;		///< Sonar Power Publisher (sonar_power)
@@ -68,6 +70,7 @@ class B21Node {
 
         void publishOdometry();
         void publishSonar();
+        void publishRanges();
         void publishBumps();
 
     public:
@@ -100,6 +103,7 @@ B21Node::B21Node() : n ("~") {
 
     base_sonar_pub = n.advertise<sensor_msgs::PointCloud>("sonar_cloud_base", 50);
     body_sonar_pub = n.advertise<sensor_msgs::PointCloud>("sonar_cloud_body", 50);
+    range_pub = n.advertise<sensor_msgs::Range>("sonar_ranges", 250);
     sonar_power_pub = n.advertise<std_msgs::Bool>("sonar_power", 1);
     brake_power_pub = n.advertise<std_msgs::Bool>("brake_power", 1);
     voltage_pub = n.advertise<std_msgs::Float32>("voltage", 1);
@@ -282,6 +286,27 @@ void B21Node::publishSonar() {
         base_sonar_pub.publish(cloud);
         cloud.header.frame_id = "body";
         body_sonar_pub.publish(cloud);
+    }
+    publishRanges();
+}
+
+void B21Node::publishRanges() {
+    int numSonar = 24;
+    float* readings = new float[numSonar];
+    driver.getBodySonarReadings(readings) ;
+    for(int i=0;i<numSonar;i++){
+        sensor_msgs::Range range;
+        
+        char buffer [50];
+        sprintf (buffer, "body_sonar_%d", i);       
+        
+        range.header.frame_id = buffer;
+        range.header.stamp = ros::Time::now();
+        range.field_of_view = 25*M_PI/180;
+        range.min_range = 0;
+        range.max_range = 100;
+        range.range = readings[i];
+        range_pub.publish(range);
     }
 }
 
