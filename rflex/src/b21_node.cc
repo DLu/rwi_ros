@@ -2,6 +2,7 @@
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
 #include <rflex/b21_driver.h>
+#include <rflex/b21_config.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
 #include <sensor_msgs/JointState.h>
@@ -294,17 +295,22 @@ void B21Node::publishRanges() {
     int numSonar = 24;
     float* readings = new float[numSonar];
     driver.getBodySonarReadings(readings) ;
+    sensor_msgs::Range range;
+    range.header.stamp = ros::Time::now();
+
+    range.field_of_view = 25*M_PI/180;
+    range.min_range = 0;
+    range.max_range = SONAR_MAX_RANGE/ (float) RANGE_CONVERSION;
+
+    
     for(int i=0;i<numSonar;i++){
-        sensor_msgs::Range range;
+    
+        if(readings[i] >= range.max_range)
+            continue;
         
         char buffer [50];
         sprintf (buffer, "body_sonar_%d", i);       
-        
         range.header.frame_id = buffer;
-        range.header.stamp = ros::Time::now();
-        range.field_of_view = 25*M_PI/180;
-        range.min_range = 0;
-        range.max_range = 100;
         range.range = readings[i];
         range_pub.publish(range);
     }
