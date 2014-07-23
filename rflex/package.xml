@@ -1,6 +1,6 @@
 <package>
   <name>rflex</name>
-  <version>1.0.1</version>
+  <version>1.1.0</version>
   <description>ROS adaptations of the RFLEX driver.</description>
   <author>David V. Lu!!</author>
   <author>Mikhail Medvedev</author>

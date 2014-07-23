@@ -1,6 +1,6 @@
 <package>
   <name>ptu46</name>
-  <version>1.0.1</version>
+  <version>1.1.0</version>
   <description>Driver for the Directed Perception ptu46 pan/tilt driver, forked from player</description>
   <author>Erik Karulf</author>
   <author>David V. Lu!!</author>

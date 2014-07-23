@@ -1,6 +1,6 @@
 <package>
   <name>ptu_control</name>
-  <version>1.0.1</version>
+  <version>1.1.0</version>
   <description>Actionlib interface for PTUs which listen for JointState messages (such as PTU46)</description>
   <author>Dan Lazewatsky</author>
   <maintainer email="davidvlu@gmail.com">David V. Lu!!</maintainer>
