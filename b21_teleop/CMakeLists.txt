@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(b21_teleop)
-find_package(catkin REQUIRED COMPONENTS sensor_msgs geometry_msgs roscpp joy)
+find_package(catkin REQUIRED COMPONENTS sensor_msgs geometry_msgs roscpp )
 
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
@@ -17,7 +17,7 @@ target_link_libraries(b21_teleop ${catkin_LIBRARIES})
 ## INCLUDE_DIRS: 
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 catkin_package(
-    DEPENDS sensor_msgs geometry_msgs roscpp joy
+    DEPENDS sensor_msgs geometry_msgs roscpp 
     CATKIN_DEPENDS # TODO
     INCLUDE_DIRS # TODO include
     LIBRARIES # TODO
