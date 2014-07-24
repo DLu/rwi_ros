@@ -16,6 +16,7 @@ add_library(rflex src/rflex_driver.cc)
 
 add_library(b21_driver src/b21_driver.cc)
 add_executable(b21 src/b21_node.cc)
+add_dependencies(b21 ${PROJECT_NAME}_gencfg)
 target_link_libraries(b21 b21_driver rflex  ${catkin_LIBRARIES})
 
 add_library(atrvjr_driver src/atrvjr_driver.cc)
